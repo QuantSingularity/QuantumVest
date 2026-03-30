@@ -12,10 +12,16 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock
 import numpy as np
 import pandas as pd
-from core.logging import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 try:
     from models import (
         Asset,

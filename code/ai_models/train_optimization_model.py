@@ -4,10 +4,13 @@ import numpy as np
 from pypfopt import EfficientFrontier, expected_returns, risk_models
 from pypfopt.discrete_allocation import DiscreteAllocation
 from typing import Dict
+import logging
 
-from core.logging import get_logger
-
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 DATA_PATH = "../../../../resources/datasets/historical_trends.csv"
 MODEL_PATH = "../../optimization_model.pkl"

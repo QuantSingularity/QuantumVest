@@ -17,13 +17,11 @@ import pandas as pd
 warnings.filterwarnings("ignore")
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from advanced_ai_models import AdvancedTimeSeriesPredictor, ModelFactory
-from core.logging import get_logger
+import logging
 
-logger = get_logger(__name__)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("training.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 

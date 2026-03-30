@@ -1,5 +1,3 @@
-from typing import Any
-
 """
 Test Suite for QuantumVest Backend
 Comprehensive tests for all backend components
@@ -7,6 +5,7 @@ Comprehensive tests for all backend components
 
 import json
 import pytest
+from typing import Any
 from app import create_app
 from auth import AuthService
 from models import Asset, Portfolio, User, db

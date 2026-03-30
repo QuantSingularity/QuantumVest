@@ -3,10 +3,13 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+import logging
 
-from core.logging import get_logger
-
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 # Assuming the target variable is 'Close' price for prediction

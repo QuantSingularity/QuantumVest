@@ -7,9 +7,13 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
 
 from data_preprocessing import preprocess_data, SEQUENCE_LENGTH
-from core.logging import get_logger
+import logging
 
-logger = get_logger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 DATA_PATH = "../../../../resources/datasets/market_data.csv"
 MODEL_PATH = "../../prediction_model.pkl"
