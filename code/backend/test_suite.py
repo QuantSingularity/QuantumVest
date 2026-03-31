@@ -5,14 +5,15 @@ Comprehensive Test Suite for QuantumVest Backend
 Financial industry-grade testing with security, performance, and integration tests
 """
 
+import logging
 import os
 import sys
 import unittest
 from datetime import datetime, timedelta
 from unittest.mock import Mock
+
 import numpy as np
 import pandas as pd
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,6 +24,12 @@ logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
+    from financial_services import (
+        ComplianceService,
+        PerformanceAnalyticsService,
+        PortfolioOptimizationService,
+        RiskManagementService,
+    )
     from models import (
         Asset,
         AssetType,
@@ -34,17 +41,7 @@ try:
         UserRole,
         db,
     )
-    from security import (
-        AuthenticationService,
-        AuthorizationService,
-        EncryptionService,
-    )
-    from financial_services import (
-        ComplianceService,
-        PerformanceAnalyticsService,
-        PortfolioOptimizationService,
-        RiskManagementService,
-    )
+    from security import AuthenticationService, AuthorizationService, EncryptionService
 except ImportError as e:
     logger.info(f"Warning: Could not import some modules: {e}")
 

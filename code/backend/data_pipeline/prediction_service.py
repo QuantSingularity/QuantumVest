@@ -7,6 +7,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List
+
 from data_pipeline.crypto_api import CryptoDataFetcher
 from data_pipeline.data_storage import DataStorage
 from data_pipeline.lstm_model import LSTMModel

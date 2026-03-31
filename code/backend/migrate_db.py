@@ -3,12 +3,12 @@ Database Migration Script for QuantumVest
 Initialize and migrate database schema
 """
 
+import logging
 import sys
 
 from config import get_config
-from flask_migrate import init, migrate, upgrade
 from flask import Flask
-import logging
+from flask_migrate import init, migrate, upgrade
 
 logger = logging.getLogger(__name__)
 from typing import Any

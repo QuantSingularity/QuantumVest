@@ -7,6 +7,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import CheckConstraint, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID

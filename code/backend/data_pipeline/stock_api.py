@@ -4,10 +4,11 @@ Fetches stock market data from Yahoo Finance API
 """
 
 import logging
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
+
 import pandas as pd
 
 # Add parent directory to path

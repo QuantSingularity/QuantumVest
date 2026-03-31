@@ -4,9 +4,10 @@ Provides quantitative models and analysis tools for portfolio optimization
 """
 
 import logging
+from typing import Dict, Tuple
+
 import numpy as np
 import pandas as pd
-from typing import Dict, Tuple
 
 logger = logging.getLogger(__name__)
 

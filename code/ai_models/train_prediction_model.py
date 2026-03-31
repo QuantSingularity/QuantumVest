@@ -1,13 +1,13 @@
+import logging
+
 import joblib
 import numpy as np
+from data_preprocessing import SEQUENCE_LENGTH, preprocess_data
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam
-
-from data_preprocessing import preprocess_data, SEQUENCE_LENGTH
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

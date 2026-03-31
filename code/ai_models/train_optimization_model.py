@@ -1,10 +1,11 @@
+import logging
+from typing import Dict
+
 import joblib
-import pandas as pd
 import numpy as np
+import pandas as pd
 from pypfopt import EfficientFrontier, expected_returns, risk_models
 from pypfopt.discrete_allocation import DiscreteAllocation
-from typing import Dict
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

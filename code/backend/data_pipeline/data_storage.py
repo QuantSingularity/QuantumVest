@@ -6,6 +6,7 @@ Handles storage and retrieval of financial data
 import logging
 import os
 from typing import List, Optional
+
 import pandas as pd
 
 logging.basicConfig(

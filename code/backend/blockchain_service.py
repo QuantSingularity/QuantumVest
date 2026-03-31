@@ -6,6 +6,7 @@ Web3 integration for on-chain data analysis and DeFi features
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
 from web3 import Web3
 
 logger = logging.getLogger(__name__)

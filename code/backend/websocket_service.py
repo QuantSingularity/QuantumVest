@@ -7,6 +7,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Set
+
 from auth import AuthService
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from models import Portfolio, User

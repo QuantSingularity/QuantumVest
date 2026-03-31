@@ -6,6 +6,7 @@ Fetches cryptocurrency data from public APIs
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
 import pandas as pd
 from data_pipeline.data_fetcher import DataFetcher, DataValidator
 

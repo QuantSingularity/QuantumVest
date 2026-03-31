@@ -4,8 +4,9 @@ Provides a unified interface for calling external financial data APIs
 """
 
 import logging
-import requests
 from typing import Any, Dict, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 

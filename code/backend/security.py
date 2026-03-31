@@ -12,13 +12,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Dict, List, Optional, Set, Tuple
+
 import bcrypt
 import jwt
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from models import AuditLog, User, UserRole, db
 from flask import current_app, g, jsonify, request
+from models import AuditLog, User, UserRole, db
 
 logger = logging.getLogger(__name__)
 

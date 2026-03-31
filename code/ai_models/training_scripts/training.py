@@ -11,13 +11,15 @@ import sys
 import warnings
 from datetime import datetime
 from typing import Any, Dict
+
 import numpy as np
 import pandas as pd
 
 warnings.filterwarnings("ignore")
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from advanced_ai_models import AdvancedTimeSeriesPredictor, ModelFactory
 import logging
+
+from advanced_ai_models import AdvancedTimeSeriesPredictor, ModelFactory
 
 logging.basicConfig(
     level=logging.INFO,

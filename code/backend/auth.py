@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import jwt
 from flask import current_app, jsonify, request
 from models import User, UserRole, db

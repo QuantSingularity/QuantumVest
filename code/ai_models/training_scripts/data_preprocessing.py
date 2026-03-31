@@ -1,9 +1,9 @@
+import logging
 from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
