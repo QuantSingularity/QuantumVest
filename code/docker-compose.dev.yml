@@ -1,0 +1,30 @@
+# Development override — uses SQLite, no Redis required, hot-reload enabled
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quantumvest_dev
+    restart: unless-stopped
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: sqlite:///quantumvest_dev.db
+      SECRET_KEY: dev-secret-key-not-for-production
+      JWT_SECRET_KEY: dev-jwt-secret-key-not-for-production
+      CORS_ORIGINS: "*"
+      CACHE_TYPE: SimpleCache
+      ENABLE_PORTFOLIO_OPTIMIZATION: "true"
+      ENABLE_REAL_TIME_DATA: "true"
+    volumes:
+      - ./backend:/app
+      - dev_models:/app/resources/models
+      - dev_data:/app/resources/data
+    ports:
+      - "5000:5000"
+    command: python app.py
+
+volumes:
+  dev_models:
+  dev_data:

@@ -15,9 +15,8 @@ class ApiClient:
     """Generic API client for fetching financial data"""
 
     def __init__(self):
-        """Initialize the API client"""
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": "QuantumVest/1.0"})
+        self.session.headers.update({"User-Agent": "QuantumVest/2.0"})
 
     def call_api(
         self,
@@ -26,26 +25,12 @@ class ApiClient:
         method: str = "GET",
         headers: Optional[Dict[str, str]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """
-        Make an API call to the specified endpoint
-
-        Args:
-            endpoint: API endpoint to call (e.g., 'YahooFinance/get_stock_chart')
-            query: Query parameters
-            method: HTTP method (GET, POST, etc.)
-            headers: Additional headers
-
-        Returns:
-            Response data as dictionary or None if error
-        """
         try:
-            # Parse endpoint to determine API provider
             if endpoint.startswith("YahooFinance/"):
                 return self._call_yahoo_finance(endpoint, query)
             else:
                 logger.error(f"Unknown API endpoint: {endpoint}")
                 return None
-
         except Exception as e:
             logger.error(f"Error calling API {endpoint}: {e}")
             return None
@@ -53,16 +38,6 @@ class ApiClient:
     def _call_yahoo_finance(
         self, endpoint: str, query: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
-        """
-        Call Yahoo Finance API
-
-        Args:
-            endpoint: Yahoo Finance endpoint
-            query: Query parameters
-
-        Returns:
-            Response data or None
-        """
         try:
             import yfinance as yf
 
@@ -71,15 +46,22 @@ class ApiClient:
                 interval = query.get("interval", "1d") if query else "1d"
                 range_param = query.get("range", "1y") if query else "1y"
 
-                # Use yfinance to fetch data
+                if not symbol:
+                    return None
+
                 ticker = yf.Ticker(symbol)
                 hist = ticker.history(period=range_param, interval=interval)
 
                 if hist.empty:
+                    logger.warning(f"No data returned from yfinance for {symbol}")
                     return None
 
-                # Convert to Yahoo Finance API format
-                timestamps = [int(ts.timestamp()) for ts in hist.index]
+                # Reset index to get timestamps as a column
+                hist = hist.reset_index()
+
+                # Handle both Date and Datetime index names
+                date_col = "Date" if "Date" in hist.columns else "Datetime"
+                timestamps = [int(ts.timestamp()) for ts in hist[date_col]]
 
                 response = {
                     "chart": {
@@ -102,7 +84,6 @@ class ApiClient:
                     }
                 }
 
-                # Add adjusted close if available
                 if "Adj Close" in hist.columns:
                     response["chart"]["result"][0]["indicators"]["adjclose"] = [
                         {"adjclose": hist["Adj Close"].tolist()}
@@ -113,7 +94,7 @@ class ApiClient:
             return None
 
         except ImportError:
-            logger.error("yfinance package not installed")
+            logger.error("yfinance package not installed. Run: pip install yfinance")
             return None
         except Exception as e:
             logger.error(f"Error calling Yahoo Finance API: {e}")

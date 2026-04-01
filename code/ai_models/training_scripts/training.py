@@ -98,7 +98,7 @@ class DataPreprocessor:
             try:
                 df = df[~df.index.duplicated(keep="first")]
                 df = df.sort_index()
-                df = df.fillna(method="ffill").fillna(method="bfill")
+                df = df.ffill().bfill()
                 price_change = df["close"].pct_change().abs()
                 outlier_mask = price_change > 0.5
                 df = df[~outlier_mask]

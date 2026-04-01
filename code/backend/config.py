@@ -9,12 +9,9 @@ from typing import Any, Optional
 
 
 class Config:
-    """Base configuration class"""
-
     SECRET_KEY = os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production"
     SQLALCHEMY_DATABASE_URI = (
-        os.environ.get("DATABASE_URL")
-        or "postgresql://quantumvest:password@localhost/quantumvest"
+        os.environ.get("DATABASE_URL") or "sqlite:///quantumvest_dev.db"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -36,7 +33,7 @@ class Config:
     )
     ETHEREUM_NETWORK = os.environ.get("ETHEREUM_NETWORK", "mainnet")
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-    CACHE_TYPE = "redis"
+    CACHE_TYPE = "RedisCache"
     CACHE_REDIS_URL = REDIS_URL
     CACHE_DEFAULT_TIMEOUT = 300
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
@@ -69,17 +66,19 @@ class Config:
     ENABLE_ADVANCED_ANALYTICS = (
         os.environ.get("ENABLE_ADVANCED_ANALYTICS", "true").lower() == "true"
     )
+    MAX_LOGIN_ATTEMPTS = int(os.environ.get("MAX_LOGIN_ATTEMPTS", "5"))
+    ACCOUNT_LOCKOUT_MINUTES = int(os.environ.get("ACCOUNT_LOCKOUT_MINUTES", "30"))
 
 
 class DevelopmentConfig(Config):
-    """Development configuration"""
-
     DEBUG = True
     TESTING = False
     SQLALCHEMY_DATABASE_URI = (
         os.environ.get("DEV_DATABASE_URL") or "sqlite:///quantumvest_dev.db"
     )
+    SQLALCHEMY_ENGINE_OPTIONS = {}
     BCRYPT_LOG_ROUNDS = 4
+    CACHE_TYPE = "SimpleCache"
     ENABLE_PORTFOLIO_OPTIMIZATION = True
     ENABLE_REAL_TIME_DATA = True
     ENABLE_BLOCKCHAIN_FEATURES = True
@@ -87,25 +86,22 @@ class DevelopmentConfig(Config):
 
 
 class TestingConfig(Config):
-    """Testing configuration"""
-
     TESTING = True
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    SQLALCHEMY_ENGINE_OPTIONS = {}
     WTF_CSRF_ENABLED = False
     BCRYPT_LOG_ROUNDS = 4
+    CACHE_TYPE = "SimpleCache"
     API_RATE_LIMIT: Optional[str] = None
 
 
 class ProductionConfig(Config):
-    """Production configuration"""
-
     DEBUG = False
     TESTING = False
 
     @classmethod
     def init_app(cls, app: Any) -> None:
-        # Config base class does not have init_app method
         import logging
         from logging.handlers import SysLogHandler
 
@@ -115,8 +111,6 @@ class ProductionConfig(Config):
 
 
 class DockerConfig(ProductionConfig):
-    """Docker-specific configuration"""
-
     @classmethod
     def init_app(cls, app: Any) -> None:
         ProductionConfig.init_app(app)
@@ -138,6 +132,5 @@ config = {
 
 
 def get_config() -> type:
-    """Get configuration based on environment"""
     env = os.environ.get("FLASK_ENV", "development")
     return config.get(env, config["default"])

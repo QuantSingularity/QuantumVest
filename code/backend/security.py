@@ -259,18 +259,18 @@ class AuthorizationService:
         if resource_type == "portfolio" and user.role == UserRole.PORTFOLIO_MANAGER:
             from models import Portfolio
 
-            portfolio = Portfolio.query.get(resource_id)
+            portfolio = db.session.get(Portfolio, resource_id)
             return portfolio and portfolio.user_id == user.id
         if user.role == UserRole.CLIENT:
             if resource_type == "portfolio":
                 from models import Portfolio
 
-                portfolio = Portfolio.query.get(resource_id)
+                portfolio = db.session.get(Portfolio, resource_id)
                 return portfolio and portfolio.user_id == user.id
             elif resource_type == "transaction":
                 from models import Transaction
 
-                transaction = Transaction.query.get(resource_id)
+                transaction = db.session.get(Transaction, resource_id)
                 return transaction and transaction.user_id == user.id
         return False
 
@@ -541,7 +541,7 @@ def require_auth(f: Any) -> Any:
         payload = AuthenticationService.verify_jwt_token(token)
         if not payload:
             return (jsonify({"error": "Invalid or expired token"}), 401)
-        user = User.query.get(payload["user_id"])
+        user = db.session.get(User, payload["user_id"])
         if not user or not user.is_active:
             return (jsonify({"error": "User not found or inactive"}), 401)
         g.current_user = user

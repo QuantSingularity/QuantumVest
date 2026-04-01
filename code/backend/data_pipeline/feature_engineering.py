@@ -95,7 +95,7 @@ class FeatureEngineering:
             df["obv"] = (np.sign(df["close"].diff()) * df["volume"]).fillna(0).cumsum()
 
             # Fill NaN values
-            df = df.fillna(method="bfill")
+            df = df.bfill()
 
             return df
 
@@ -219,7 +219,7 @@ class FeatureEngineering:
                 )
 
             # Fill NaN values
-            df = df.fillna(method="bfill").fillna(method="ffill").fillna(0)
+            df = df.bfill().ffill().fillna(0)
 
             return df
 

@@ -1,30 +1,34 @@
 #!/bin/bash
-# Setup script for QuantumVest backend
-
 set -e
 
 echo "=== QuantumVest Backend Setup ==="
-echo "Installing required packages..."
 
-# Create virtual environment if needed
+# Create virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
+    echo "Creating virtual environment..."
     python3 -m venv venv
 fi
 
 # Activate virtual environment
 source venv/bin/activate
 
-# Install minimal dependencies for testing
-pip install -q Flask Flask-SQLAlchemy Flask-CORS Flask-Migrate PyJWT Werkzeug bcrypt cryptography pandas numpy scikit-learn requests
+# Upgrade pip
+pip install --upgrade pip
+
+# Install dependencies
+echo "Installing dependencies..."
+pip install -r requirements.txt
+
+# Create .env from example if not exists
+if [ ! -f .env ]; then
+    cp .env.example .env
+    echo "Created .env from .env.example — please update with your settings"
+fi
+
+# Create resource directories
+mkdir -p ../resources/{data,data_cache,models,model_reports} uploads logs
 
 echo ""
-echo "=== Installation Complete ==="
-echo ""
-echo "To start the backend:"
-echo "1. Set environment variables (optional):"
-echo "   export FLASK_ENV=development"
-echo "   export DATABASE_URL=sqlite:///quantumvest_dev.db"
-echo ""
-echo "2. Run the application:"
-echo "   python3 app.py"
-echo ""
+echo "=== Setup Complete ==="
+echo "To start the server: ./run.sh"
+echo "Or activate venv: source venv/bin/activate && python app.py"

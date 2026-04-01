@@ -100,7 +100,7 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
 
     logger.info(f"Initial NaN count: {df.isnull().sum().sum()}")
     # Forward-fill missing values
-    df.fillna(method="ffill", inplace=True)
+    df = df.ffill()
 
     # Drop any remaining NaNs (e.g., those at the very beginning due to rolling windows)
     df.dropna(inplace=True)

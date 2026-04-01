@@ -1,6 +1,6 @@
 """
 Cryptocurrency API Module
-Fetches cryptocurrency data from public APIs
+Fetches cryptocurrency data from CoinGecko API
 """
 
 import logging
@@ -20,12 +20,6 @@ class CryptoDataFetcher(DataFetcher):
     """Fetches cryptocurrency data from CoinGecko API"""
 
     def __init__(self, cache_dir: str = "../../resources/data_cache") -> None:
-        """
-        Initialize the crypto data fetcher
-
-        Args:
-            cache_dir: Directory to cache fetched data
-        """
         super().__init__(cache_dir)
         self.base_url = "https://api.coingecko.com/api/v3"
 
@@ -36,47 +30,38 @@ class CryptoDataFetcher(DataFetcher):
         end_date: Optional[str] = None,
         interval: str = "daily",
     ) -> pd.DataFrame:
-        """
-        Fetch cryptocurrency data for the given symbol
-
-        Args:
-            symbol: The cryptocurrency symbol (e.g., 'bitcoin', 'ethereum')
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format
-            interval: Data interval ('daily', 'hourly')
-
-        Returns:
-            DataFrame with the fetched cryptocurrency data
-        """
         cached_data = self._load_from_cache(symbol, interval)
         if cached_data is not None:
             logger.info(f"Loaded cached data for {symbol}")
             return cached_data
+
         if end_date is None:
             end_date = datetime.now().strftime("%Y-%m-%d")
         if start_date is None:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+
         logger.info(
             f"Fetching crypto data for {symbol} from {start_date} to {end_date}"
         )
         try:
             from_timestamp = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
             to_timestamp = int(datetime.strptime(end_date, "%Y-%m-%d").timestamp())
-            days = "1" if interval == "daily" else "0"
+
             url = f"{self.base_url}/coins/{symbol}/market_chart/range"
             params = {
                 "vs_currency": "usd",
                 "from": from_timestamp,
                 "to": to_timestamp,
-                "days": days,
             }
-            response = self.session.get(url, params=params)
+            response = self.session.get(url, params=params, timeout=30)
             self._handle_request_error(response, symbol)
             data = response.json()
-            if "prices" in data and "market_caps" in data and ("total_volumes" in data):
+
+            if "prices" in data and "market_caps" in data and "total_volumes" in data:
                 prices = data["prices"]
                 market_caps = data["market_caps"]
                 volumes = data["total_volumes"]
+
                 df = pd.DataFrame(prices, columns=["timestamp", "close"])
                 df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
                 df["market_cap"] = [item[1] for item in market_caps]
@@ -85,8 +70,11 @@ class CryptoDataFetcher(DataFetcher):
                 df["open"] = df["close"].shift(1)
                 df["high"] = df["close"]
                 df["low"] = df["close"]
+
+                # Fixed: use iloc[0] instead of loc[0] for positional indexing
                 if not df.empty:
-                    df.loc[0, "open"] = df.loc[0, "close"]
+                    df.iloc[0, df.columns.get_loc("open")] = df.iloc[0]["close"]
+
                 df = DataValidator.validate_dataframe(df, symbol)
                 self._save_to_cache(df, symbol, interval)
                 return df
@@ -98,19 +86,10 @@ class CryptoDataFetcher(DataFetcher):
             return pd.DataFrame()
 
     def fetch_current_price(self, symbols: List[str]) -> Dict[str, Optional[float]]:
-        """
-        Fetch current prices for multiple cryptocurrencies
-
-        Args:
-            symbols: List of cryptocurrency symbols
-
-        Returns:
-            Dictionary mapping symbols to their current prices
-        """
         try:
             url = f"{self.base_url}/simple/price"
             params = {"ids": ",".join(symbols), "vs_currencies": "usd"}
-            response = self.session.get(url, params=params)
+            response = self.session.get(url, params=params, timeout=30)
             self._handle_request_error(response, ",".join(symbols))
             data = response.json()
             prices: Dict[str, Optional[float]] = {}
@@ -127,16 +106,6 @@ class CryptoDataFetcher(DataFetcher):
     def fetch_multiple_cryptos(
         self, symbols: List[str], interval: str = "daily"
     ) -> Dict[str, pd.DataFrame]:
-        """
-        Fetch data for multiple cryptocurrency symbols
-
-        Args:
-            symbols: List of cryptocurrency symbols
-            interval: Data interval
-
-        Returns:
-            Dictionary mapping symbols to their respective DataFrames
-        """
         results = {}
         for symbol in symbols:
             results[symbol] = self.fetch_data(symbol, interval=interval)

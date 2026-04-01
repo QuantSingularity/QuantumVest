@@ -1,294 +1,138 @@
-# QuantumVest Platform
+# QuantumVest — AI-Powered Investment Analytics Platform
 
-## Financial Industry-Grade Investment Analytics Platform
+A comprehensive investment analytics platform with AI-driven predictions, portfolio optimization, real-time data, and blockchain integration.
 
-QuantumVest is a comprehensive, enterprise-ready investment analytics platform designed for financial institutions, portfolio managers, and sophisticated investors. This version includes advanced AI capabilities, institutional-grade security, and comprehensive compliance features.
+## Quick Start
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Architecture](#architecture)
-- [Installation](#installation)
-- [API Documentation](#api-documentation)
-
-## Overview
-
-QuantumVest Platform provides:
-
-- **Advanced Portfolio Management**: Multi-asset portfolio optimization with real-time risk assessment
-- **AI-Powered Analytics**: Machine learning models for price prediction and market analysis
-- **Institutional Security**: Bank-grade security with multi-factor authentication and encryption
-- **Regulatory Compliance**: Built-in compliance monitoring and reporting
-- **Blockchain Integration**: Smart contracts for transparent and secure transactions
-- **Real-time Data Processing**: High-frequency data ingestion and processing capabilities
-- **Comprehensive API**: RESTful APIs with extensive documentation and SDKs
-
-## Key Features
-
-### Security & Compliance
-
-- **Multi-Factor Authentication (MFA)** with TOTP support
-- **Role-Based Access Control (RBAC)** with granular permissions
-- **End-to-End Encryption** for sensitive data
-- **Audit Logging** for all user actions and system events
-- **Compliance Monitoring** with automated violation detection
-- **Threat Detection** with real-time security monitoring
-
-### AI & Machine Learning
-
-- **Advanced Time Series Prediction** using LSTM, Transformer, and ensemble models
-- **Portfolio Optimization** with modern portfolio theory and machine learning
-- **Risk Assessment** with VaR, CVaR, and stress testing
-- **Sentiment Analysis** for market news and social media
-- **Anomaly Detection** for fraud prevention and risk management
-- **Real-time Model Training** with automated retraining pipelines
-
-### Portfolio Management
-
-- **Multi-Asset Support** (stocks, crypto, bonds, ETFs, commodities, forex)
-- **Real-time Portfolio Valuation** with live market data
-- **Performance Analytics** with comprehensive metrics
-- **Risk Management** with advanced risk models
-- **Automated Rebalancing** based on target allocations
-- **Transaction Management** with detailed audit trails
-
-### Blockchain Integration
-
-- **Smart Contracts** for transparent portfolio management
-- **Token-based Governance** with voting mechanisms
-- **Staking and Rewards** system for platform tokens
-- **Price Oracles** for reliable asset pricing
-- **Decentralized Identity** for enhanced security
-
-### Analytics & Reporting
-
-- **Real-time Dashboards** with customizable widgets
-- **Advanced Charting** with technical indicators
-- **Performance Attribution** analysis
-- **Risk Reports** with stress testing scenarios
-- **Compliance Reports** for regulatory requirements
-- **Custom Report Builder** with export capabilities
-
-## Architecture
-
-### System Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web Frontend  │    │  Mobile Apps    │    │  Third-party    │
-│   (React.js)    │    │  (React Native) │    │  Integrations   │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
-                                 │
-                    ┌─────────────┴─────────────┐
-                    │      API Gateway          │
-                    │   (Load Balancer +        │
-                    │    Rate Limiting)         │
-                    └─────────────┬─────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │    Backend Services       │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   Authentication    │  │
-                    │  │     Service         │  │
-                    │  └─────────────────────┘  │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   Portfolio         │  │
-                    │  │   Management        │  │
-                    │  └─────────────────────┘  │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   AI/ML Engine      │  │
-                    │  └─────────────────────┘  │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   Risk Management   │  │
-                    │  └─────────────────────┘  │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   Compliance        │  │
-                    │  │   Engine            │  │
-                    │  └─────────────────────┘  │
-                    └─────────────┬─────────────┘
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │     Data Layer            │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   PostgreSQL        │  │
-                    │  │   (Primary DB)      │  │
-                    │  └─────────────────────┘  │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   Redis             │  │
-                    │  │   (Cache/Sessions)  │  │
-                    │  └─────────────────────┘  │
-                    │                           │
-                    │  ┌─────────────────────┐  │
-                    │  │   InfluxDB          │  │
-                    │  │   (Time Series)     │  │
-                    │  └─────────────────────┘  │
-                    └───────────────────────────┘
-```
-
-### Technology Stack
-
-**Backend:**
-
-- **Framework**: Flask 2.3+ with SQLAlchemy ORM
-- **Database**: PostgreSQL 14+ (primary), Redis 7+ (cache)
-- **AI/ML**: TensorFlow 2.13+, scikit-learn, XGBoost, LightGBM
-- **Security**: bcrypt, PyJWT, cryptography
-- **API**: RESTful APIs with OpenAPI/Swagger documentation
-
-**Blockchain:**
-
-- **Platform**: Ethereum (Solidity 0.8+)
-- **Framework**: Truffle / Hardhat
-- **Libraries**: OpenZeppelin contracts
-- **Integration**: Web3.py for backend integration
-
-## Installation
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 14+
-- Redis 7+
-- Docker & Docker Compose (optional)
-
-### Quick Start with Docker
+### Option 1: Docker (Recommended)
 
 ```bash
-# Clone the repository
-git clone https://github.com/quantsingularity/quantumvest.git .
+# Copy and configure environment
+cp .env.docker .env
+# Edit .env and set strong passwords for SECRET_KEY, JWT_SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
 
-# Start all services with Docker Compose
-docker-compose up -d
+# Start services (PostgreSQL + Redis + Backend)
+docker compose up -d
 
-# The application will be available at:
-# - Frontend: http://localhost:3000
-# - Backend API: http://localhost:5000
-# - API Documentation: http://localhost:5000/docs
+# View logs
+docker compose logs -f backend
 ```
 
-### Manual Installation
+The API will be available at `http://localhost:5000/api/v1`
 
-#### Backend Setup
+### Option 2: Local Development (SQLite, no Redis required)
 
 ```bash
-# Navigate to backend directory
-cd code/backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variables
-export FLASK_ENV=development
-export DATABASE_URL=postgresql://user:password@localhost/quantumvest
-export REDIS_URL=redis://localhost:6379
-export SECRET_KEY=your-secret-key
-
-# Initialize database
-flask db upgrade
-
-# Start the backend server
+cd backend
+cp .env.example .env
+./setup.sh          # creates venv and installs deps
+source venv/bin/activate
 python app.py
 ```
 
-#### AI Models Setup
+---
 
-```bash
-# Navigate to AI models directory
-cd code/ai_models
+## API Endpoints
 
-# Install additional ML dependencies
-pip install -r requirements.txt
-
-# Train initial models (optional)
-python training_scripts/training.py
-```
-
-#### Blockchain Setup
-
-```bash
-# Navigate to blockchain directory
-cd code/blockchain
-
-# Install dependencies
-npm install
-
-# Compile contracts
-truffle compile
-
-# Deploy to local network (Ganache)
-truffle migrate --network development
-```
-
-## API Documentation
+| Method | Endpoint                               | Description                   |
+| ------ | -------------------------------------- | ----------------------------- |
+| POST   | `/api/v1/auth/register`                | Register new user             |
+| POST   | `/api/v1/auth/login`                   | Login                         |
+| POST   | `/api/v1/auth/logout`                  | Logout                        |
+| POST   | `/api/v1/auth/refresh`                 | Refresh access token          |
+| GET    | `/api/v1/auth/profile`                 | Get user profile              |
+| PUT    | `/api/v1/auth/profile`                 | Update profile                |
+| POST   | `/api/v1/auth/change-password`         | Change password               |
+| GET    | `/api/v1/portfolios`                   | List portfolios               |
+| POST   | `/api/v1/portfolios`                   | Create portfolio              |
+| GET    | `/api/v1/portfolios/<id>`              | Portfolio details + holdings  |
+| DELETE | `/api/v1/portfolios/<id>`              | Delete portfolio              |
+| POST   | `/api/v1/portfolios/<id>/transactions` | Add transaction               |
+| GET    | `/api/v1/portfolios/<id>/transactions` | List transactions             |
+| GET    | `/api/v1/portfolios/<id>/performance`  | Performance metrics           |
+| POST   | `/api/v1/portfolios/<id>/optimize`     | Optimize allocation (Premium) |
+| GET    | `/api/v1/assets`                       | List all assets               |
+| GET    | `/api/v1/assets/search?q=AAPL`         | Search assets                 |
+| GET    | `/api/v1/data/stocks/<symbol>`         | Historical stock data         |
+| GET    | `/api/v1/data/crypto/<symbol>`         | Historical crypto data        |
+| GET    | `/api/v1/predictions/stocks/<symbol>`  | LSTM stock prediction         |
+| GET    | `/api/v1/predictions/crypto/<symbol>`  | LSTM crypto prediction        |
+| GET    | `/api/v1/watchlists`                   | List watchlists               |
+| POST   | `/api/v1/watchlists`                   | Create watchlist              |
+| POST   | `/api/v1/watchlists/<id>/items`        | Add asset to watchlist        |
+| GET    | `/api/v1/health`                       | Health check                  |
+| GET    | `/api/v1/models/status`                | AI model status               |
 
 ### Authentication
 
-All API endpoints require authentication via JWT tokens.
+All endpoints except `/health`, `/auth/register`, and `/auth/login` require a Bearer token:
 
-```bash
-# Register a new user
-curl -X POST http://localhost:5000/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d
+```
+Authorization: Bearer <access_token>
 ```
 
-### Portfolio Management
+---
+
+## Docker Compose Services
+
+| Service         | Description                                      | Port    |
+| --------------- | ------------------------------------------------ | ------- |
+| `backend`       | Flask API server                                 | 5000    |
+| `db`            | PostgreSQL 15                                    | 5432    |
+| `redis`         | Redis 7 (cache + broker)                         | 6379    |
+| `celery_worker` | Background tasks (optional, `--profile full`)    | —       |
+| `nginx`         | Reverse proxy (optional, `--profile production`) | 80, 443 |
 
 ```bash
-# Create a portfolio
-curl -X POST http://localhost:5000/api/v1/portfolios \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d
+# Start with all services
+docker compose --profile full up -d
 
-# Get portfolio details
-curl -X GET http://localhost:5000/api/v1/portfolios/{portfolio_id} \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-
-# Add a transaction
-curl -X POST http://localhost:5000/api/v1/portfolios/{portfolio_id}/transactions \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d
+# Production with nginx
+docker compose --profile production up -d
 ```
 
-### AI Predictions
+---
 
-```bash
-# Get stock prediction
-curl -X GET http://localhost:5000/api/v1/predictions/stocks/AAPL?days_ahead=7 \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+## Architecture
 
-# Get portfolio optimization
-curl -X POST http://localhost:5000/api/v1/portfolios/{portfolio_id}/optimize \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d
+```
+quantumvest/
+├── backend/
+│   ├── app.py                  # Flask app factory
+│   ├── config.py               # Environment configs
+│   ├── models.py               # SQLAlchemy ORM models
+│   ├── auth.py                 # JWT auth + decorators
+│   ├── api_routes.py           # REST API blueprint
+│   ├── portfolio_service.py    # Portfolio management
+│   ├── financial_services.py   # Risk & compliance
+│   ├── security.py             # Encryption & audit
+│   ├── websocket_service.py    # Real-time WebSocket
+│   ├── blockchain_service.py   # Web3 integration
+│   └── data_pipeline/
+│       ├── stock_api.py        # Yahoo Finance fetcher
+│       ├── crypto_api.py       # CoinGecko fetcher
+│       ├── lstm_model.py       # LSTM time-series model
+│       ├── prediction_service.py
+│       ├── feature_engineering.py
+│       └── data_storage.py
+├── ai_models/
+│   ├── advanced_ai_models.py
+│   └── training_scripts/
+├── blockchain/
+│   └── contracts/
+├── Dockerfile
+├── docker-compose.yml
+└── docker-compose.dev.yml
 ```
 
-### Risk Analysis
+## Environment Variables
 
-```bash
-# Get portfolio risk analysis
-curl -X GET http://localhost:5000/api/v1/portfolios/{portfolio_id}/risk-analysis \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+See `backend/.env.example` for full reference. Key variables:
 
-# Get compliance check
-curl -X GET http://localhost:5000/api/v1/portfolios/{portfolio_id}/compliance \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
+| Variable         | Required | Description                         |
+| ---------------- | -------- | ----------------------------------- |
+| `SECRET_KEY`     | Yes      | Flask secret (32+ chars)            |
+| `JWT_SECRET_KEY` | Yes      | JWT signing key                     |
+| `DATABASE_URL`   | Yes      | SQLite or PostgreSQL URL            |
+| `REDIS_URL`      | No       | Falls back to SimpleCache           |
+| `FLASK_ENV`      | No       | `development`/`production`/`docker` |

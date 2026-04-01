@@ -13,13 +13,15 @@ from data_pipeline.data_storage import DataStorage
 from data_pipeline.prediction_service import PredictionService
 from data_pipeline.stock_api import StockDataFetcher
 from flask import Blueprint, Response, jsonify, request
-from models import Asset, Watchlist, db
+from models import Asset, Watchlist, WatchlistItem, db
 from portfolio_service import PortfolioService
+from sqlalchemy import text
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 prediction_service = PredictionService()
 stock_fetcher = StockDataFetcher()
@@ -31,7 +33,6 @@ portfolio_service = PortfolioService()
 @api_bp.route("/auth/register", methods=["POST"])
 @rate_limit(limit=5, window=300)
 def register() -> Tuple[Response, int]:
-    """User registration endpoint"""
     try:
         data = request.get_json()
         if not data:
@@ -60,8 +61,7 @@ def register() -> Tuple[Response, int]:
         )
         if result["success"]:
             return (jsonify(result), 201)
-        else:
-            return (jsonify(result), 400)
+        return (jsonify(result), 400)
     except Exception as e:
         logger.error(f"Error in register endpoint: {e}")
         return (jsonify({"success": False, "error": "Registration failed"}), 500)
@@ -70,7 +70,6 @@ def register() -> Tuple[Response, int]:
 @api_bp.route("/auth/login", methods=["POST"])
 @rate_limit(limit=10, window=300)
 def login() -> Tuple[Response, int]:
-    """User login endpoint"""
     try:
         data = request.get_json()
         if not data:
@@ -90,16 +89,21 @@ def login() -> Tuple[Response, int]:
         result = AuthService.login_user(username_or_email, password)
         if result["success"]:
             return (jsonify(result), 200)
-        else:
-            return (jsonify(result), 401)
+        return (jsonify(result), 401)
     except Exception as e:
         logger.error(f"Error in login endpoint: {e}")
         return (jsonify({"success": False, "error": "Login failed"}), 500)
 
 
+@api_bp.route("/auth/logout", methods=["POST"])
+@token_required
+def logout(current_user: Any) -> Tuple[Response, int]:
+    """Logout endpoint - client should discard tokens"""
+    return (jsonify({"success": True, "message": "Logged out successfully"}), 200)
+
+
 @api_bp.route("/auth/refresh", methods=["POST"])
 def refresh_token() -> Tuple[Response, int]:
-    """Refresh access token endpoint"""
     try:
         data = request.get_json()
         if not data or "refresh_token" not in data:
@@ -107,8 +111,7 @@ def refresh_token() -> Tuple[Response, int]:
         result = AuthService.refresh_access_token(data["refresh_token"])
         if result["success"]:
             return (jsonify(result), 200)
-        else:
-            return (jsonify(result), 401)
+        return (jsonify(result), 401)
     except Exception as e:
         logger.error(f"Error in refresh token endpoint: {e}")
         return (jsonify({"success": False, "error": "Token refresh failed"}), 500)
@@ -117,7 +120,6 @@ def refresh_token() -> Tuple[Response, int]:
 @api_bp.route("/auth/profile", methods=["GET"])
 @token_required
 def get_profile(current_user: Any) -> Tuple[Response, int]:
-    """Get user profile endpoint"""
     try:
         return (jsonify({"success": True, "user": current_user.to_dict()}), 200)
     except Exception as e:
@@ -128,7 +130,6 @@ def get_profile(current_user: Any) -> Tuple[Response, int]:
 @api_bp.route("/auth/profile", methods=["PUT"])
 @token_required
 def update_profile(current_user: Any) -> Tuple[Response, int]:
-    """Update user profile endpoint"""
     try:
         data = request.get_json()
         if not data:
@@ -139,7 +140,7 @@ def update_profile(current_user: Any) -> Tuple[Response, int]:
             "phone",
             "risk_tolerance",
             "investment_experience",
-            "preferred_currency",
+            "investment_goals",
         ]
         for field in allowed_fields:
             if field in data:
@@ -153,16 +154,42 @@ def update_profile(current_user: Any) -> Tuple[Response, int]:
         return (jsonify({"success": False, "error": "Failed to update profile"}), 500)
 
 
+@api_bp.route("/auth/change-password", methods=["POST"])
+@token_required
+@rate_limit(limit=5, window=300)
+def change_password(current_user: Any) -> Tuple[Response, int]:
+    try:
+        data = request.get_json()
+        if not data:
+            return (jsonify({"success": False, "error": "No data provided"}), 400)
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+        if not all([current_password, new_password]):
+            return (
+                jsonify(
+                    {"success": False, "error": "Current and new password are required"}
+                ),
+                400,
+            )
+        result = AuthService.change_password(
+            str(current_user.id), current_password, new_password
+        )
+        if result["success"]:
+            return (jsonify(result), 200)
+        return (jsonify(result), 400)
+    except Exception as e:
+        logger.error(f"Error in change password endpoint: {e}")
+        return (jsonify({"success": False, "error": "Failed to change password"}), 500)
+
+
 @api_bp.route("/portfolios", methods=["GET"])
 @token_required
 def get_portfolios(current_user: Any) -> Tuple[Response, int]:
-    """Get user portfolios endpoint"""
     try:
         result = portfolio_service.get_user_portfolios(str(current_user.id))
         if result["success"]:
             return (jsonify(result), 200)
-        else:
-            return (jsonify(result), 400)
+        return (jsonify(result), 400)
     except Exception as e:
         logger.error(f"Error in get portfolios endpoint: {e}")
         return (jsonify({"success": False, "error": "Failed to get portfolios"}), 500)
@@ -171,7 +198,6 @@ def get_portfolios(current_user: Any) -> Tuple[Response, int]:
 @api_bp.route("/portfolios", methods=["POST"])
 @token_required
 def create_portfolio(current_user: Any) -> Tuple[Response, int]:
-    """Create portfolio endpoint"""
     try:
         data = request.get_json()
         if not data or "name" not in data:
@@ -188,8 +214,7 @@ def create_portfolio(current_user: Any) -> Tuple[Response, int]:
         )
         if result["success"]:
             return (jsonify(result), 201)
-        else:
-            return (jsonify(result), 400)
+        return (jsonify(result), 400)
     except Exception as e:
         logger.error(f"Error in create portfolio endpoint: {e}")
         return (jsonify({"success": False, "error": "Failed to create portfolio"}), 500)
@@ -198,15 +223,13 @@ def create_portfolio(current_user: Any) -> Tuple[Response, int]:
 @api_bp.route("/portfolios/<portfolio_id>", methods=["GET"])
 @token_required
 def get_portfolio_details(current_user: Any, portfolio_id: str) -> Tuple[Response, int]:
-    """Get portfolio details endpoint"""
     try:
         result = portfolio_service.get_portfolio_details(
             portfolio_id=portfolio_id, user_id=str(current_user.id)
         )
         if result["success"]:
             return (jsonify(result), 200)
-        else:
-            return (jsonify(result), 404)
+        return (jsonify(result), 404)
     except Exception as e:
         logger.error(f"Error in get portfolio details endpoint: {e}")
         return (
@@ -215,14 +238,28 @@ def get_portfolio_details(current_user: Any, portfolio_id: str) -> Tuple[Respons
         )
 
 
+@api_bp.route("/portfolios/<portfolio_id>", methods=["DELETE"])
+@token_required
+def delete_portfolio(current_user: Any, portfolio_id: str) -> Tuple[Response, int]:
+    try:
+        result = portfolio_service.delete_portfolio(
+            portfolio_id=portfolio_id, user_id=str(current_user.id)
+        )
+        if result["success"]:
+            return (jsonify(result), 200)
+        return (jsonify(result), 404)
+    except Exception as e:
+        logger.error(f"Error in delete portfolio endpoint: {e}")
+        return (jsonify({"success": False, "error": "Failed to delete portfolio"}), 500)
+
+
 @api_bp.route("/portfolios/<portfolio_id>/transactions", methods=["POST"])
 @token_required
 def add_transaction(current_user: Any, portfolio_id: str) -> Tuple[Response, int]:
-    """Add transaction endpoint"""
     try:
         data = request.get_json()
         required_fields = ["asset_symbol", "transaction_type", "quantity", "price"]
-        if not data or not all((field in data for field in required_fields)):
+        if not data or not all(field in data for field in required_fields):
             return (
                 jsonify(
                     {
@@ -244,11 +281,30 @@ def add_transaction(current_user: Any, portfolio_id: str) -> Tuple[Response, int
         )
         if result["success"]:
             return (jsonify(result), 201)
-        else:
-            return (jsonify(result), 400)
+        return (jsonify(result), 400)
     except Exception as e:
         logger.error(f"Error in add transaction endpoint: {e}")
         return (jsonify({"success": False, "error": "Failed to add transaction"}), 500)
+
+
+@api_bp.route("/portfolios/<portfolio_id>/transactions", methods=["GET"])
+@token_required
+def get_transactions(current_user: Any, portfolio_id: str) -> Tuple[Response, int]:
+    try:
+        page = int(request.args.get("page", 1))
+        per_page = min(int(request.args.get("per_page", 20)), 100)
+        result = portfolio_service.get_transactions(
+            portfolio_id=portfolio_id,
+            user_id=str(current_user.id),
+            page=page,
+            per_page=per_page,
+        )
+        if result["success"]:
+            return (jsonify(result), 200)
+        return (jsonify(result), 404)
+    except Exception as e:
+        logger.error(f"Error in get transactions endpoint: {e}")
+        return (jsonify({"success": False, "error": "Failed to get transactions"}), 500)
 
 
 @api_bp.route("/portfolios/<portfolio_id>/performance", methods=["GET"])
@@ -256,7 +312,6 @@ def add_transaction(current_user: Any, portfolio_id: str) -> Tuple[Response, int
 def get_portfolio_performance(
     current_user: Any, portfolio_id: str
 ) -> Tuple[Response, int]:
-    """Get portfolio performance endpoint"""
     try:
         days = int(request.args.get("days", 30))
         result = portfolio_service.get_portfolio_performance(
@@ -264,8 +319,7 @@ def get_portfolio_performance(
         )
         if result["success"]:
             return (jsonify(result), 200)
-        else:
-            return (jsonify(result), 404)
+        return (jsonify(result), 404)
     except Exception as e:
         logger.error(f"Error in get portfolio performance endpoint: {e}")
         return (
@@ -278,7 +332,6 @@ def get_portfolio_performance(
 @token_required
 @premium_required
 def optimize_portfolio(current_user: Any, portfolio_id: str) -> Tuple[Response, int]:
-    """Optimize portfolio endpoint (Premium feature)"""
     try:
         data = request.get_json() or {}
         result = portfolio_service.optimize_portfolio(
@@ -289,8 +342,7 @@ def optimize_portfolio(current_user: Any, portfolio_id: str) -> Tuple[Response, 
         )
         if result["success"]:
             return (jsonify(result), 200)
-        else:
-            return (jsonify(result), 400)
+        return (jsonify(result), 400)
     except Exception as e:
         logger.error(f"Error in optimize portfolio endpoint: {e}")
         return (
@@ -302,7 +354,6 @@ def optimize_portfolio(current_user: Any, portfolio_id: str) -> Tuple[Response, 
 @api_bp.route("/assets/search", methods=["GET"])
 @token_required
 def search_assets(current_user: Any) -> Tuple[Response, int]:
-    """Search assets endpoint"""
     try:
         query = request.args.get("q", "").strip()
         asset_type = request.args.get("type", "").strip()
@@ -312,7 +363,8 @@ def search_assets(current_user: Any) -> Tuple[Response, int]:
                 jsonify({"success": False, "error": "Search query is required"}),
                 400,
             )
-        search_query = Asset.query.filter(Asset.is_active)
+
+        search_query = Asset.query.filter(Asset.is_active == True)
         if asset_type:
             search_query = search_query.filter(Asset.asset_type == asset_type)
         search_query = search_query.filter(
@@ -328,10 +380,40 @@ def search_assets(current_user: Any) -> Tuple[Response, int]:
         return (jsonify({"success": False, "error": "Failed to search assets"}), 500)
 
 
+@api_bp.route("/assets", methods=["GET"])
+@token_required
+def list_assets(current_user: Any) -> Tuple[Response, int]:
+    try:
+        asset_type = request.args.get("type", "").strip()
+        page = int(request.args.get("page", 1))
+        per_page = min(int(request.args.get("per_page", 20)), 100)
+
+        query = Asset.query.filter(Asset.is_active == True)
+        if asset_type:
+            query = query.filter(Asset.asset_type == asset_type)
+
+        paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "assets": [asset.to_dict() for asset in paginated.items],
+                    "total": paginated.total,
+                    "pages": paginated.pages,
+                    "page": page,
+                    "per_page": per_page,
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        logger.error(f"Error in list assets endpoint: {e}")
+        return (jsonify({"success": False, "error": "Failed to list assets"}), 500)
+
+
 @api_bp.route("/data/stocks/<symbol>", methods=["GET"])
 @token_required
 def get_stock_data(current_user: Any, symbol: str) -> Tuple[Response, int]:
-    """Get stock data endpoint"""
     try:
         interval = request.args.get("interval", "1d")
         use_cache = request.args.get("use_cache", "true").lower() == "true"
@@ -354,7 +436,7 @@ def get_stock_data(current_user: Any, symbol: str) -> Tuple[Response, int]:
             )
         data = df.to_dict(orient="records")
         for item in data:
-            if "timestamp" in item:
+            if "timestamp" in item and hasattr(item["timestamp"], "strftime"):
                 item["timestamp"] = item["timestamp"].strftime("%Y-%m-%d")
         return jsonify(
             {
@@ -373,7 +455,6 @@ def get_stock_data(current_user: Any, symbol: str) -> Tuple[Response, int]:
 @api_bp.route("/data/crypto/<symbol>", methods=["GET"])
 @token_required
 def get_crypto_data(current_user: Any, symbol: str) -> Tuple[Response, int]:
-    """Get cryptocurrency data endpoint"""
     try:
         interval = request.args.get("interval", "daily")
         use_cache = request.args.get("use_cache", "true").lower() == "true"
@@ -399,7 +480,7 @@ def get_crypto_data(current_user: Any, symbol: str) -> Tuple[Response, int]:
             )
         data = df.to_dict(orient="records")
         for item in data:
-            if "timestamp" in item:
+            if "timestamp" in item and hasattr(item["timestamp"], "strftime"):
                 item["timestamp"] = item["timestamp"].strftime("%Y-%m-%d")
         return jsonify(
             {
@@ -418,7 +499,6 @@ def get_crypto_data(current_user: Any, symbol: str) -> Tuple[Response, int]:
 @api_bp.route("/predictions/stocks/<symbol>", methods=["GET"])
 @token_required
 def get_stock_prediction(current_user: Any, symbol: str) -> Tuple[Response, int]:
-    """Get stock prediction endpoint"""
     try:
         days_ahead = int(request.args.get("days_ahead", "7"))
         use_cache = request.args.get("use_cache", "true").lower() == "true"
@@ -436,7 +516,6 @@ def get_stock_prediction(current_user: Any, symbol: str) -> Tuple[Response, int]
 @api_bp.route("/predictions/crypto/<symbol>", methods=["GET"])
 @token_required
 def get_crypto_prediction(current_user: Any, symbol: str) -> Tuple[Response, int]:
-    """Get cryptocurrency prediction endpoint"""
     try:
         days_ahead = int(request.args.get("days_ahead", "7"))
         use_cache = request.args.get("use_cache", "true").lower() == "true"
@@ -454,7 +533,6 @@ def get_crypto_prediction(current_user: Any, symbol: str) -> Tuple[Response, int
 @api_bp.route("/watchlists", methods=["GET"])
 @token_required
 def get_watchlists(current_user: Any) -> Tuple[Response, int]:
-    """Get user watchlists endpoint"""
     try:
         watchlists = Watchlist.query.filter_by(user_id=current_user.id).all()
         watchlist_data = []
@@ -467,7 +545,7 @@ def get_watchlists(current_user: Any) -> Tuple[Response, int]:
                 "created_at": (
                     watchlist.created_at.isoformat() if watchlist.created_at else None
                 ),
-                "items_count": len(watchlist.items),
+                "items_count": watchlist.items.count(),
             }
             watchlist_data.append(watchlist_dict)
         return (jsonify({"success": True, "watchlists": watchlist_data}), 200)
@@ -479,7 +557,6 @@ def get_watchlists(current_user: Any) -> Tuple[Response, int]:
 @api_bp.route("/watchlists", methods=["POST"])
 @token_required
 def create_watchlist(current_user: Any) -> Tuple[Response, int]:
-    """Create watchlist endpoint"""
     try:
         data = request.get_json()
         if not data or "name" not in data:
@@ -515,16 +592,65 @@ def create_watchlist(current_user: Any) -> Tuple[Response, int]:
         return (jsonify({"success": False, "error": "Failed to create watchlist"}), 500)
 
 
+@api_bp.route("/watchlists/<watchlist_id>/items", methods=["POST"])
+@token_required
+def add_watchlist_item(current_user: Any, watchlist_id: str) -> Tuple[Response, int]:
+    try:
+        watchlist = Watchlist.query.filter_by(
+            id=watchlist_id, user_id=current_user.id
+        ).first()
+        if not watchlist:
+            return (jsonify({"success": False, "error": "Watchlist not found"}), 404)
+        data = request.get_json()
+        if not data or "asset_symbol" not in data:
+            return (
+                jsonify({"success": False, "error": "Asset symbol is required"}),
+                400,
+            )
+        asset = Asset.query.filter_by(symbol=data["asset_symbol"].upper()).first()
+        if not asset:
+            return (jsonify({"success": False, "error": "Asset not found"}), 404)
+        existing = WatchlistItem.query.filter_by(
+            watchlist_id=watchlist_id, asset_id=asset.id
+        ).first()
+        if existing:
+            return (
+                jsonify({"success": False, "error": "Asset already in watchlist"}),
+                409,
+            )
+        item = WatchlistItem(
+            watchlist_id=watchlist_id,
+            asset_id=asset.id,
+            notes=data.get("notes"),
+        )
+        db.session.add(item)
+        db.session.commit()
+        return (jsonify({"success": True, "message": "Asset added to watchlist"}), 201)
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding watchlist item: {e}")
+        return (
+            jsonify({"success": False, "error": "Failed to add item to watchlist"}),
+            500,
+        )
+
+
 @api_bp.route("/health", methods=["GET"])
 def health_check() -> Response:
-    """Health check endpoint"""
+    db_status = False
+    try:
+        db.session.execute(text("SELECT 1"))
+        db_status = True
+    except Exception:
+        pass
+
     return jsonify(
         {
-            "status": "healthy",
+            "status": "healthy" if db_status else "degraded",
             "version": "2.0.0",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "services": {
-                "database": True,
+                "database": db_status,
                 "prediction": True,
                 "data_fetching": True,
                 "storage": True,
@@ -536,7 +662,6 @@ def health_check() -> Response:
 @api_bp.route("/models/status", methods=["GET"])
 @token_required
 def get_model_status(current_user: Any) -> Tuple[Response, int]:
-    """Get model status endpoint"""
     try:
         available_models = prediction_service.get_available_models()
         return jsonify({"success": True, "available_models": available_models})

@@ -1,3 +1,6 @@
+import matplotlib
+
+matplotlib.use("Agg")
 """
 Model Evaluator Module
 Evaluates model performance and generates performance metrics

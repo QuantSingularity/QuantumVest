@@ -76,7 +76,7 @@ class RiskManagementService:
     ) -> RiskAnalysisResult:
         """Calculate comprehensive risk metrics for a portfolio"""
         try:
-            portfolio = Portfolio.query.get(portfolio_id)
+            portfolio = db.session.get(Portfolio, portfolio_id)
             if not portfolio:
                 raise ValueError(f"Portfolio {portfolio_id} not found")
             holdings = PortfolioHolding.query.filter_by(portfolio_id=portfolio_id).all()
@@ -158,7 +158,7 @@ class RiskManagementService:
     ) -> Dict[str, Any]:
         """Perform stress testing on portfolio"""
         try:
-            portfolio = Portfolio.query.get(portfolio_id)
+            portfolio = db.session.get(Portfolio, portfolio_id)
             if not portfolio:
                 raise ValueError(f"Portfolio {portfolio_id} not found")
             holdings = PortfolioHolding.query.filter_by(portfolio_id=portfolio_id).all()
@@ -318,7 +318,7 @@ class PerformanceAnalyticsService:
     ) -> PerformanceMetrics:
         """Calculate comprehensive performance metrics"""
         try:
-            portfolio = Portfolio.query.get(portfolio_id)
+            portfolio = db.session.get(Portfolio, portfolio_id)
             if not portfolio:
                 raise ValueError(f"Portfolio {portfolio_id} not found")
             performance_history = (
@@ -418,7 +418,7 @@ class ComplianceService:
     def check_portfolio_compliance(portfolio_id: str) -> Dict[str, Any]:
         """Perform comprehensive compliance checks"""
         try:
-            portfolio = Portfolio.query.get(portfolio_id)
+            portfolio = db.session.get(Portfolio, portfolio_id)
             if not portfolio:
                 raise ValueError(f"Portfolio {portfolio_id} not found")
             user = portfolio.owner

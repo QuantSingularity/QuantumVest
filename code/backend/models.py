@@ -4,21 +4,40 @@ Financial industry-grade models with comprehensive features
 """
 
 import enum
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import CheckConstraint, Index, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+USE_POSTGRES = DATABASE_URL.startswith("postgresql") or DATABASE_URL.startswith(
+    "postgres"
+)
+
+if USE_POSTGRES:
+    from sqlalchemy.dialects.postgresql import JSONB
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+
+    JsonType = JSONB
+    UUIDColumn = lambda: PG_UUID(as_uuid=True)
+    uuid_default = lambda: uuid.uuid4
+else:
+    from sqlalchemy import JSON, String
+    from werkzeug.security import check_password_hash, generate_password_hash
+
+    JsonType = JSON
+    UUIDColumn = lambda: String(36)
+    uuid_default = lambda: (lambda: str(uuid.uuid4()))
+
+from werkzeug.security import check_password_hash, generate_password_hash
+
 
 class UserRole(enum.Enum):
-    """User roles for role-based access control"""
-
     ADMIN = "admin"
     PORTFOLIO_MANAGER = "portfolio_manager"
     ANALYST = "analyst"
@@ -27,8 +46,6 @@ class UserRole(enum.Enum):
 
 
 class AssetType(enum.Enum):
-    """Asset types supported by the platform"""
-
     STOCK = "stock"
     CRYPTO = "crypto"
     BOND = "bond"
@@ -40,8 +57,6 @@ class AssetType(enum.Enum):
 
 
 class TransactionType(enum.Enum):
-    """Transaction types for portfolio management"""
-
     BUY = "buy"
     SELL = "sell"
     DIVIDEND = "dividend"
@@ -53,8 +68,6 @@ class TransactionType(enum.Enum):
 
 
 class RiskLevel(enum.Enum):
-    """Risk levels for portfolio classification"""
-
     CONSERVATIVE = "conservative"
     MODERATE = "moderate"
     AGGRESSIVE = "aggressive"
@@ -62,24 +75,32 @@ class RiskLevel(enum.Enum):
 
 
 class ComplianceStatus(enum.Enum):
-    """Compliance status for regulatory tracking"""
-
     COMPLIANT = "compliant"
     NON_COMPLIANT = "non_compliant"
     UNDER_REVIEW = "under_review"
     PENDING = "pending"
 
 
-class User(db.Model):
-    """User model with comprehensive financial features"""
+def _new_uuid():
+    return uuid.uuid4() if USE_POSTGRES else str(uuid.uuid4())
 
+
+def _uuid_col():
+    if USE_POSTGRES:
+        from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+
+        return PG_UUID(as_uuid=True)
+    return db.String(36)
+
+
+class User(db.Model):
     __tablename__ = "users"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    first_name = db.Column(db.String(100), nullable=False)
-    last_name = db.Column(db.String(100), nullable=False)
+    first_name = db.Column(db.String(100), nullable=True)
+    last_name = db.Column(db.String(100), nullable=True)
     phone = db.Column(db.String(20))
     role = db.Column(db.Enum(UserRole), default=UserRole.CLIENT, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
@@ -97,12 +118,12 @@ class User(db.Model):
     failed_login_attempts = db.Column(db.Integer, default=0)
     account_locked_until = db.Column(db.DateTime(timezone=True))
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     portfolios = db.relationship(
         "Portfolio", backref="owner", lazy="dynamic", cascade="all, delete-orphan"
@@ -114,15 +135,12 @@ class User(db.Model):
     audit_logs = db.relationship("AuditLog", backref="user", lazy="dynamic")
 
     def set_password(self, password: str) -> None:
-        """Set password hash"""
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password: str) -> bool:
-        """Check password"""
         return check_password_hash(self.password_hash, password)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
         return {
             "id": str(self.id),
             "email": self.email,
@@ -138,15 +156,14 @@ class User(db.Model):
             "investment_experience": self.investment_experience,
             "kyc_status": self.kyc_status.value,
             "aml_status": self.aml_status.value,
+            "two_factor_enabled": self.two_factor_enabled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
 class Asset(db.Model):
-    """Asset model with comprehensive market data"""
-
     __tablename__ = "assets"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     symbol = db.Column(db.String(20), unique=True, nullable=False, index=True)
     name = db.Column(db.String(255), nullable=False)
     asset_type = db.Column(db.Enum(AssetType), nullable=False, index=True)
@@ -162,14 +179,14 @@ class Asset(db.Model):
     sharpe_ratio = db.Column(db.Float)
     description = db.Column(db.Text)
     website = db.Column(db.String(255))
-    meta_data = db.Column(JSONB)
+    meta_data = db.Column(JsonType)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     price_history = db.relationship(
         "PriceHistory", backref="asset", lazy="dynamic", cascade="all, delete-orphan"
@@ -180,7 +197,6 @@ class Asset(db.Model):
     transactions = db.relationship("Transaction", backref="asset", lazy="dynamic")
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
         return {
             "id": str(self.id),
             "symbol": self.symbol,
@@ -199,15 +215,15 @@ class Asset(db.Model):
 
 
 class Portfolio(db.Model):
-    """Portfolio model with comprehensive tracking"""
-
     __tablename__ = "portfolios"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     user_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("users.id"), nullable=False, index=True
     )
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
+    currency = db.Column(db.String(10), default="USD")
+    is_default = db.Column(db.Boolean, default=False, nullable=False)
     risk_level = db.Column(db.Enum(RiskLevel), default=RiskLevel.MODERATE)
     target_return = db.Column(db.Float)
     benchmark_symbol = db.Column(db.String(20))
@@ -227,12 +243,12 @@ class Portfolio(db.Model):
     auto_rebalance = db.Column(db.Boolean, default=False)
     rebalance_threshold = db.Column(db.Float, default=0.05)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     holdings = db.relationship(
         "PortfolioHolding",
@@ -249,18 +265,21 @@ class Portfolio(db.Model):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
         return {
             "id": str(self.id),
             "user_id": str(self.user_id),
             "name": self.name,
             "description": self.description,
+            "currency": self.currency,
+            "is_default": self.is_default,
             "risk_level": self.risk_level.value,
             "total_value": float(self.total_value) if self.total_value else 0,
             "cash_balance": float(self.cash_balance) if self.cash_balance else 0,
             "invested_amount": (
                 float(self.invested_amount) if self.invested_amount else 0
             ),
+            "unrealized_pnl": float(self.unrealized_pnl) if self.unrealized_pnl else 0,
+            "realized_pnl": float(self.realized_pnl) if self.realized_pnl else 0,
             "total_return": self.total_return,
             "annualized_return": self.annualized_return,
             "volatility": self.volatility,
@@ -271,15 +290,13 @@ class Portfolio(db.Model):
 
 
 class PortfolioHolding(db.Model):
-    """Portfolio holdings with detailed tracking"""
-
     __tablename__ = "portfolio_holdings"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     portfolio_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("portfolios.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("portfolios.id"), nullable=False, index=True
     )
     asset_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("assets.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("assets.id"), nullable=False, index=True
     )
     quantity = db.Column(db.Numeric(20, 8), nullable=False, default=0)
     average_cost = db.Column(db.Numeric(15, 8), nullable=False, default=0)
@@ -291,12 +308,12 @@ class PortfolioHolding(db.Model):
     target_weight = db.Column(db.Float)
     weight_deviation = db.Column(db.Float)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     __table_args__ = (
         UniqueConstraint("portfolio_id", "asset_id", name="unique_portfolio_asset"),
@@ -305,7 +322,6 @@ class PortfolioHolding(db.Model):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
         return {
             "id": str(self.id),
             "portfolio_id": str(self.portfolio_id),
@@ -322,34 +338,35 @@ class PortfolioHolding(db.Model):
 
 
 class Transaction(db.Model):
-    """Transaction model with comprehensive tracking"""
-
     __tablename__ = "transactions"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     user_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("users.id"), nullable=False, index=True
     )
     portfolio_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("portfolios.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("portfolios.id"), nullable=False, index=True
     )
     asset_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("assets.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("assets.id"), nullable=False, index=True
     )
     transaction_type = db.Column(db.Enum(TransactionType), nullable=False, index=True)
     quantity = db.Column(db.Numeric(20, 8), nullable=False)
     price = db.Column(db.Numeric(15, 8), nullable=False)
     total_amount = db.Column(db.Numeric(20, 2), nullable=False)
     fees = db.Column(db.Numeric(10, 2), default=0)
+    realized_pnl = db.Column(db.Numeric(20, 2), default=0)
     external_id = db.Column(db.String(100))
     order_id = db.Column(db.String(100))
     execution_venue = db.Column(db.String(100))
     notes = db.Column(db.Text)
-    meta_data = db.Column(JSONB)
+    meta_data = db.Column(JsonType)
     executed_at = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     __table_args__ = (
         Index("idx_transaction_date", "executed_at"),
@@ -360,7 +377,6 @@ class Transaction(db.Model):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
         return {
             "id": str(self.id),
             "user_id": str(self.user_id),
@@ -371,18 +387,17 @@ class Transaction(db.Model):
             "price": float(self.price),
             "total_amount": float(self.total_amount),
             "fees": float(self.fees) if self.fees else 0,
+            "realized_pnl": float(self.realized_pnl) if self.realized_pnl else 0,
             "executed_at": self.executed_at.isoformat() if self.executed_at else None,
             "notes": self.notes,
         }
 
 
 class PriceHistory(db.Model):
-    """Historical price data for assets"""
-
     __tablename__ = "price_history"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     asset_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("assets.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("assets.id"), nullable=False, index=True
     )
     timestamp = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     open_price = db.Column(db.Numeric(15, 8), nullable=False)
@@ -405,12 +420,10 @@ class PriceHistory(db.Model):
 
 
 class PortfolioPerformance(db.Model):
-    """Portfolio performance tracking over time"""
-
     __tablename__ = "portfolio_performance"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     portfolio_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("portfolios.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("portfolios.id"), nullable=False, index=True
     )
     timestamp = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     total_value = db.Column(db.Numeric(20, 2), nullable=False)
@@ -432,12 +445,10 @@ class PortfolioPerformance(db.Model):
 
 
 class Alert(db.Model):
-    """User alerts and notifications"""
-
     __tablename__ = "alerts"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     user_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("users.id"), nullable=False, index=True
     )
     title = db.Column(db.String(255), nullable=False)
     message = db.Column(db.Text, nullable=False)
@@ -445,9 +456,9 @@ class Alert(db.Model):
     severity = db.Column(db.String(20), default="info")
     is_read = db.Column(db.Boolean, default=False, nullable=False)
     is_dismissed = db.Column(db.Boolean, default=False, nullable=False)
-    meta_data = db.Column(JSONB)
+    meta_data = db.Column(JsonType)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     read_at = db.Column(db.DateTime(timezone=True))
     __table_args__ = (
@@ -457,11 +468,9 @@ class Alert(db.Model):
 
 
 class AuditLog(db.Model):
-    """Audit log for compliance and security tracking"""
-
     __tablename__ = "audit_logs"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), index=True)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
+    user_id = db.Column(_uuid_col(), db.ForeignKey("users.id"), index=True)
     event_type = db.Column(db.String(100), nullable=False, index=True)
     event_description = db.Column(db.Text, nullable=False)
     ip_address = db.Column(db.String(45))
@@ -469,9 +478,11 @@ class AuditLog(db.Model):
     endpoint = db.Column(db.String(255))
     method = db.Column(db.String(10))
     status_code = db.Column(db.Integer)
-    meta_data = db.Column(JSONB)
+    meta_data = db.Column(JsonType)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc), index=True
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
     )
     __table_args__ = (
         Index("idx_audit_user_created", "user_id", "created_at"),
@@ -480,12 +491,10 @@ class AuditLog(db.Model):
 
 
 class RiskMetrics(db.Model):
-    """Risk metrics calculation and storage"""
-
     __tablename__ = "risk_metrics"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     portfolio_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("portfolios.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("portfolios.id"), nullable=False, index=True
     )
     calculation_date = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     var_95 = db.Column(db.Float)
@@ -494,8 +503,8 @@ class RiskMetrics(db.Model):
     cvar_99 = db.Column(db.Float)
     portfolio_volatility = db.Column(db.Float)
     portfolio_beta = db.Column(db.Float)
-    correlation_matrix = db.Column(JSONB)
-    stress_test_results = db.Column(JSONB)
+    correlation_matrix = db.Column(JsonType)
+    stress_test_results = db.Column(JsonType)
     __table_args__ = (
         UniqueConstraint(
             "portfolio_id", "calculation_date", name="unique_portfolio_risk_date"
@@ -504,23 +513,21 @@ class RiskMetrics(db.Model):
 
 
 class ComplianceCheck(db.Model):
-    """Compliance monitoring and reporting"""
-
     __tablename__ = "compliance_checks"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     user_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("users.id"), nullable=False, index=True
     )
-    portfolio_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("portfolios.id"), index=True
-    )
+    portfolio_id = db.Column(_uuid_col(), db.ForeignKey("portfolios.id"), index=True)
     check_type = db.Column(db.String(100), nullable=False, index=True)
     check_description = db.Column(db.Text, nullable=False)
     status = db.Column(db.Enum(ComplianceStatus), nullable=False)
-    findings = db.Column(JSONB)
+    findings = db.Column(JsonType)
     recommendations = db.Column(db.Text)
     checked_at = db.Column(
-        db.DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     resolved_at = db.Column(db.DateTime(timezone=True))
     __table_args__ = (
@@ -530,23 +537,21 @@ class ComplianceCheck(db.Model):
 
 
 class Watchlist(db.Model):
-    """User watchlists for tracking assets"""
-
     __tablename__ = "watchlists"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     user_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("users.id"), nullable=False, index=True
     )
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     is_default = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at = db.Column(
         db.DateTime(timezone=True),
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     items = db.relationship(
         "WatchlistItem",
@@ -556,7 +561,6 @@ class Watchlist(db.Model):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
         return {
             "id": str(self.id),
             "user_id": str(self.user_id),
@@ -568,19 +572,17 @@ class Watchlist(db.Model):
 
 
 class WatchlistItem(db.Model):
-    """Items in user watchlists"""
-
     __tablename__ = "watchlist_items"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     watchlist_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("watchlists.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("watchlists.id"), nullable=False, index=True
     )
     asset_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("assets.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("assets.id"), nullable=False, index=True
     )
     notes = db.Column(db.Text)
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     __table_args__ = (
         UniqueConstraint("watchlist_id", "asset_id", name="unique_watchlist_asset"),
@@ -588,12 +590,10 @@ class WatchlistItem(db.Model):
 
 
 class PriceData(db.Model):
-    """Real-time and historical price data for assets"""
-
     __tablename__ = "price_data"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = db.Column(_uuid_col(), primary_key=True, default=_new_uuid)
     asset_id = db.Column(
-        UUID(as_uuid=True), db.ForeignKey("assets.id"), nullable=False, index=True
+        _uuid_col(), db.ForeignKey("assets.id"), nullable=False, index=True
     )
     timestamp = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
     interval = db.Column(db.String(10), nullable=False, default="1d")
@@ -604,7 +604,7 @@ class PriceData(db.Model):
     volume = db.Column(db.Numeric(20, 2))
     source = db.Column(db.String(50), default="api")
     created_at = db.Column(
-        db.DateTime(timezone=True), default=datetime.now(timezone.utc)
+        db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     __table_args__ = (
         UniqueConstraint(

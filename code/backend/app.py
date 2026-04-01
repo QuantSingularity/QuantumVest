@@ -6,7 +6,6 @@ Comprehensive investment analytics platform with authentication, portfolio manag
 import logging
 import os
 
-from api_routes import api_bp
 from config import get_config
 from flask import Flask, jsonify, send_from_directory
 from flask_caching import Cache
@@ -19,19 +18,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+cache = Cache()
+
 
 def create_app(config_name: str = None) -> Flask:
     """Application factory pattern"""
     app = Flask(__name__, static_folder="../web-frontend/build")
+
     if config_name is None:
         config_name = os.environ.get("FLASK_ENV", "development")
+
     config_class = get_config()
     app.config.from_object(config_class)
+
     db.init_app(app)
     Migrate(app, db)
-    Cache(app)
+    cache.init_app(app)
     CORS(app, origins=app.config.get("CORS_ORIGINS", ["*"]))
+
+    from api_routes import api_bp
+
     app.register_blueprint(api_bp)
+
     with app.app_context():
         try:
             db.create_all()
@@ -44,10 +52,16 @@ def create_app(config_name: str = None) -> Flask:
     @app.route("/<path:path>")
     def serve_static(path):
         """Serve React frontend"""
-        if path != "" and os.path.exists(app.static_folder + "/" + path):
-            return send_from_directory(app.static_folder, path)
-        else:
-            return send_from_directory(app.static_folder, "index.html")
+        static_folder = app.static_folder or ""
+        if path != "" and os.path.exists(os.path.join(static_folder, path)):
+            return send_from_directory(static_folder, path)
+        index_path = os.path.join(static_folder, "index.html")
+        if os.path.exists(index_path):
+            return send_from_directory(static_folder, "index.html")
+        return (
+            jsonify({"message": "QuantumVest API is running. Frontend not built yet."}),
+            200,
+        )
 
     @app.errorhandler(404)
     def not_found(error):
@@ -190,6 +204,7 @@ def create_default_assets() -> None:
 
 
 app = create_app()
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_ENV") == "development"
