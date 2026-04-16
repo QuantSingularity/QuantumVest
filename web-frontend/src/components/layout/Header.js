@@ -67,8 +67,17 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
           onClick={toggleSidebar}
           aria-label="Toggle sidebar"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="18" x2="21" y2="18" />
@@ -81,8 +90,17 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
         {/* FIX: search now has a submit handler */}
         <form className="search-bar" onSubmit={handleSearch}>
           <span className="search-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -99,15 +117,37 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
 
         <div className="header-actions">
           {/* Theme toggle */}
-          <button className="header-action-btn" onClick={toggleTheme} aria-label="Toggle theme">
+          <button
+            className="header-action-btn"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+          >
             {theme === "light" ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
                 <line x1="12" y1="21" x2="12" y2="23" />
@@ -125,11 +165,23 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
           <div className="notif-wrapper" ref={notifRef}>
             <button
               className="header-action-btn"
-              onClick={() => { setNotifOpen((p) => !p); setUserMenuOpen(false); }}
+              onClick={() => {
+                setNotifOpen((p) => !p);
+                setUserMenuOpen(false);
+              }}
               aria-label="Notifications"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
@@ -151,7 +203,10 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                   <div className="notif-dropdown-header">
                     <span>Notifications</span>
                     {unreadCount > 0 && (
-                      <button className="notif-mark-all" onClick={markAllAsRead}>
+                      <button
+                        className="notif-mark-all"
+                        onClick={markAllAsRead}
+                      >
                         Mark all read
                       </button>
                     )}
@@ -168,7 +223,9 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                         >
                           <div className={`notif-dot ${n.type || "info"}`} />
                           <div className="notif-item-body">
-                            {n.title && <p className="notif-title">{n.title}</p>}
+                            {n.title && (
+                              <p className="notif-title">{n.title}</p>
+                            )}
                             <p className="notif-message">{n.message}</p>
                           </div>
                         </div>
@@ -184,7 +241,10 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
           <div className="user-dropdown" ref={userMenuRef}>
             <div
               className="user-dropdown-toggle"
-              onClick={() => { setUserMenuOpen((p) => !p); setNotifOpen(false); }}
+              onClick={() => {
+                setUserMenuOpen((p) => !p);
+                setNotifOpen(false);
+              }}
               role="button"
               aria-haspopup="true"
               aria-expanded={userMenuOpen}
@@ -204,10 +264,22 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                 >
                   <div
                     className="user-dropdown-item"
-                    onClick={() => { navigate("/profile"); setUserMenuOpen(false); }}
+                    onClick={() => {
+                      navigate("/profile");
+                      setUserMenuOpen(false);
+                    }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
@@ -215,19 +287,43 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                   </div>
                   <div
                     className="user-dropdown-item"
-                    onClick={() => { navigate("/settings"); setUserMenuOpen(false); }}
+                    onClick={() => {
+                      navigate("/settings");
+                      setUserMenuOpen(false);
+                    }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <circle cx="12" cy="12" r="3" />
                       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                     <span>Settings</span>
                   </div>
                   <hr className="user-dropdown-divider" />
-                  <div className="user-dropdown-item logout" onClick={handleLogout}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <div
+                    className="user-dropdown-item logout"
+                    onClick={handleLogout}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                       <polyline points="16 17 21 12 16 7" />
                       <line x1="21" y1="12" x2="9" y2="12" />

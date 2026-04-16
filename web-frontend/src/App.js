@@ -74,8 +74,8 @@ function AppContent() {
 
   const pageVariants = {
     initial: { opacity: 0, y: 20 },
-    in:      { opacity: 1, y: 0 },
-    out:     { opacity: 0, y: -20 },
+    in: { opacity: 1, y: 0 },
+    out: { opacity: 0, y: -20 },
   };
   const pageTransition = { type: "tween", ease: "anticipate", duration: 0.4 };
 
@@ -98,9 +98,12 @@ function AppContent() {
         <ErrorBoundary>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
-              <Route path="/login"           element={wrapPage(Login)} />
-              <Route path="/register"        element={wrapPage(Register)} />
-              <Route path="/forgot-password" element={wrapPage(ForgotPassword)} />
+              <Route path="/login" element={wrapPage(Login)} />
+              <Route path="/register" element={wrapPage(Register)} />
+              <Route
+                path="/forgot-password"
+                element={wrapPage(ForgotPassword)}
+              />
             </Routes>
           </AnimatePresence>
           <ToastManager />
@@ -122,27 +125,35 @@ function AppContent() {
         >
           <Header toggleSidebar={toggleSidebar} pageTitle={currentPage} />
 
-          <main className={`main-content ${isHomepage ? "homepage-content" : ""}`}>
+          <main
+            className={`main-content ${isHomepage ? "homepage-content" : ""}`}
+          >
             <ErrorBoundary>
               <AnimatePresence mode="wait">
                 <Routes location={location} key={location.pathname}>
                   {/* Core pages */}
-                  <Route path="/"            element={wrapPage(Homepage)} />
-                  <Route path="/dashboard"   element={wrapPage(Dashboard)} />
-                  <Route path="/predictions" element={wrapPage(PredictionChart)} />
-                  <Route path="/optimize"    element={wrapPage(PortfolioOptimization)} />
-                  <Route path="/analytics"   element={wrapPage(Analytics)} />
-                  <Route path="/watchlist"   element={wrapPage(Watchlist)} />
-                  <Route path="/settings"    element={wrapPage(Settings)} />
+                  <Route path="/" element={wrapPage(Homepage)} />
+                  <Route path="/dashboard" element={wrapPage(Dashboard)} />
+                  <Route
+                    path="/predictions"
+                    element={wrapPage(PredictionChart)}
+                  />
+                  <Route
+                    path="/optimize"
+                    element={wrapPage(PortfolioOptimization)}
+                  />
+                  <Route path="/analytics" element={wrapPage(Analytics)} />
+                  <Route path="/watchlist" element={wrapPage(Watchlist)} />
+                  <Route path="/settings" element={wrapPage(Settings)} />
 
                   {/* New pages */}
-                  <Route path="/profile"     element={wrapPage(Profile)} />
-                  <Route path="/contact"     element={wrapPage(Contact)} />
-                  <Route path="/privacy"     element={wrapPage(Privacy)} />
-                  <Route path="/terms"       element={wrapPage(Terms)} />
+                  <Route path="/profile" element={wrapPage(Profile)} />
+                  <Route path="/contact" element={wrapPage(Contact)} />
+                  <Route path="/privacy" element={wrapPage(Privacy)} />
+                  <Route path="/terms" element={wrapPage(Terms)} />
 
                   {/* 404 */}
-                  <Route path="*"            element={wrapPage(NotFound)} />
+                  <Route path="*" element={wrapPage(NotFound)} />
                 </Routes>
               </AnimatePresence>
             </ErrorBoundary>

@@ -43,20 +43,45 @@ const Profile = () => {
 
         <div className="card" style={{ maxWidth: 640, margin: "0 auto" }}>
           {/* Avatar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 28 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 20,
+              marginBottom: 28,
+            }}
+          >
             <div
               style={{
-                width: 72, height: 72, borderRadius: "50%",
+                width: 72,
+                height: 72,
+                borderRadius: "50%",
                 background: "linear-gradient(135deg,#2563eb,#7c3aed)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#fff", fontWeight: 700, fontSize: "1.6rem", flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: "1.6rem",
+                flexShrink: 0,
               }}
             >
-              {form.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+              {form.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
             </div>
             <div>
               <h2 style={{ margin: 0 }}>{form.name}</h2>
-              <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--text-secondary)",
+                  fontSize: "0.9rem",
+                }}
+              >
                 Premium Plan · Member since 2023
               </p>
             </div>
@@ -64,28 +89,64 @@ const Profile = () => {
 
           <form onSubmit={handleSubmit}>
             <div className="form-group" style={{ marginBottom: 16 }}>
-              <label className="form-label" htmlFor="name">Full Name</label>
-              <input id="name" name="name" type="text" className="form-control"
-                value={form.name} onChange={handleChange} />
+              <label className="form-label" htmlFor="name">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                className="form-control"
+                value={form.name}
+                onChange={handleChange}
+              />
             </div>
             <div className="form-group" style={{ marginBottom: 16 }}>
-              <label className="form-label" htmlFor="email">Email Address</label>
-              <input id="email" name="email" type="email" className="form-control"
-                value={form.email} onChange={handleChange} />
+              <label className="form-label" htmlFor="email">
+                Email Address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                className="form-control"
+                value={form.email}
+                onChange={handleChange}
+              />
             </div>
             <div className="form-group" style={{ marginBottom: 16 }}>
-              <label className="form-label" htmlFor="phone">Phone</label>
-              <input id="phone" name="phone" type="tel" className="form-control"
-                value={form.phone} onChange={handleChange} />
+              <label className="form-label" htmlFor="phone">
+                Phone
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                className="form-control"
+                value={form.phone}
+                onChange={handleChange}
+              />
             </div>
             <div className="form-group" style={{ marginBottom: 24 }}>
-              <label className="form-label" htmlFor="bio">Bio</label>
-              <textarea id="bio" name="bio" className="form-control"
-                rows={3} value={form.bio} onChange={handleChange}
-                style={{ resize: "vertical" }} />
+              <label className="form-label" htmlFor="bio">
+                Bio
+              </label>
+              <textarea
+                id="bio"
+                name="bio"
+                className="form-control"
+                rows={3}
+                value={form.bio}
+                onChange={handleChange}
+                style={{ resize: "vertical" }}
+              />
             </div>
-            <button type="submit" className="btn btn-primary" disabled={saving}
-              style={{ minWidth: 140 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+              style={{ minWidth: 140 }}
+            >
               {saving ? "Saving…" : "Save Changes"}
             </button>
           </form>

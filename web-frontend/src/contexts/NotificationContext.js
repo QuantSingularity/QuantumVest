@@ -4,9 +4,30 @@ import React, { createContext, useState } from "react";
 export const NotificationContext = createContext();
 
 const SEED_NOTIFICATIONS = [
-  { id: 1, type: "success", title: "Portfolio Updated", message: "Your portfolio rebalancing was completed successfully.", read: false, timestamp: new Date() },
-  { id: 2, type: "info",    title: "AI Prediction Ready", message: "New 7-day price predictions are available for your watchlist.", read: false, timestamp: new Date() },
-  { id: 3, type: "warning", title: "Market Alert",       message: "High volatility detected in your TSLA position.", read: true,  timestamp: new Date() },
+  {
+    id: 1,
+    type: "success",
+    title: "Portfolio Updated",
+    message: "Your portfolio rebalancing was completed successfully.",
+    read: false,
+    timestamp: new Date(),
+  },
+  {
+    id: 2,
+    type: "info",
+    title: "AI Prediction Ready",
+    message: "New 7-day price predictions are available for your watchlist.",
+    read: false,
+    timestamp: new Date(),
+  },
+  {
+    id: 3,
+    type: "warning",
+    title: "Market Alert",
+    message: "High volatility detected in your TSLA position.",
+    read: true,
+    timestamp: new Date(),
+  },
 ];
 
 export const NotificationProvider = ({ children }) => {

@@ -875,7 +875,9 @@ a:hover {
   padding: 6px;
   border-radius: var(--border-radius-sm);
   position: relative;
-  transition: color 0.2s, background 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s;
 }
 
 .header-action-btn:hover {

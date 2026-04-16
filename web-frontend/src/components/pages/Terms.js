@@ -34,7 +34,11 @@ const sections = [
 
 const Terms = () => (
   <div className="profile-page">
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
       <h1 className="section-title">Terms of Service</h1>
       <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
         Last updated: January 1, 2025
@@ -46,10 +50,19 @@ const Terms = () => (
             <p style={{ color: "var(--text-secondary)", margin: 0 }}>{body}</p>
           </div>
         ))}
-        <hr style={{ margin: "24px 0", border: "none", borderTop: "1px solid var(--border-color)" }} />
+        <hr
+          style={{
+            margin: "24px 0",
+            border: "none",
+            borderTop: "1px solid var(--border-color)",
+          }}
+        />
         <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
           Questions? Contact{" "}
-          <a href="mailto:legal@quantumvest.io" style={{ color: "var(--primary-color)" }}>
+          <a
+            href="mailto:legal@quantumvest.io"
+            style={{ color: "var(--primary-color)" }}
+          >
             legal@quantumvest.io
           </a>
         </p>

@@ -13,9 +13,13 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) { setError("Email is required"); return; }
+    if (!email) {
+      setError("Email is required");
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Enter a valid email address"); return;
+      setError("Enter a valid email address");
+      return;
     }
     setLoading(true);
     try {
@@ -32,8 +36,12 @@ const ForgotPassword = () => {
 
   return (
     <div className="auth-page">
-      <motion.div className="auth-card" initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <motion.div
+        className="auth-card"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="auth-logo">
           <div className="auth-logo-icon">Q</div>
           <span className="auth-logo-text">QuantumVest</span>
@@ -46,7 +54,11 @@ const ForgotPassword = () => {
               If an account exists for <strong>{email}</strong>, we've sent a
               password reset link.
             </p>
-            <Link to="/login" className="btn btn-primary auth-submit" style={{ display: "block", textAlign: "center", marginTop: 16 }}>
+            <Link
+              to="/login"
+              className="btn btn-primary auth-submit"
+              style={{ display: "block", textAlign: "center", marginTop: 16 }}
+            >
               Back to Sign In
             </Link>
           </>
@@ -58,18 +70,35 @@ const ForgotPassword = () => {
             </p>
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">
-                <label className="form-label" htmlFor="email">Email Address</label>
-                <input id="email" type="email" className={`form-control ${error ? "is-invalid" : ""}`}
-                  value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                  placeholder="you@example.com" autoComplete="email" />
+                <label className="form-label" htmlFor="email">
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  className={`form-control ${error ? "is-invalid" : ""}`}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
                 {error && <p className="field-error">{error}</p>}
               </div>
-              <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
+              <button
+                type="submit"
+                className="btn btn-primary auth-submit"
+                disabled={loading}
+              >
                 {loading ? "Sending…" : "Send Reset Link"}
               </button>
             </form>
             <p className="auth-switch">
-              <Link to="/login" className="auth-link">Back to Sign In</Link>
+              <Link to="/login" className="auth-link">
+                Back to Sign In
+              </Link>
             </p>
           </>
         )}
