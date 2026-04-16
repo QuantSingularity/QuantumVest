@@ -1,4 +1,6 @@
+import React from "react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import "../../styles/Footer.css";
 
 const Footer = () => {
@@ -21,15 +23,15 @@ const Footer = () => {
 
       <div className="footer-right">
         <div className="footer-links">
-          <a href="#" className="footer-link">
+          <Link to="/privacy" className="footer-link">
             Privacy Policy
-          </a>
-          <a href="#" className="footer-link">
+          </Link>
+          <Link to="/terms" className="footer-link">
             Terms of Service
-          </a>
-          <a href="#" className="footer-link">
+          </Link>
+          <Link to="/contact" className="footer-link">
             Contact Us
-          </a>
+          </Link>
         </div>
 
         <div className="footer-social">

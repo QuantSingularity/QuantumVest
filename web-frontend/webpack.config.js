@@ -3,6 +3,8 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
+// Always use MiniCssExtractPlugin (already installed).
+// style-loader would give better HMR but requires an extra npm install.
 module.exports = {
   entry: "./src/index.js",
   output: {
@@ -18,7 +20,7 @@ module.exports = {
         use: {
           loader: "babel-loader",
           options: {
-            presets: ["@babel/preset-env", "@babel/preset-react"],
+            presets: ["@babel/preset-env", ["@babel/preset-react", { "runtime": "automatic" }]],
           },
         },
       },

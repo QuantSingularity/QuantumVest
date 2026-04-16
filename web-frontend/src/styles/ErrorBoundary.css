@@ -8,7 +8,8 @@
 }
 
 .error-container {
-  background-color: white;
+  background-color: var(--surface-color, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
   padding: 2rem;

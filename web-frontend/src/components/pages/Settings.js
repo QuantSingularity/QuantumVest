@@ -1,6 +1,8 @@
+import React from "react";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { authAPI, settingsAPI } from "../../services/api";
+import "../../styles/Settings.css";
 import LoadingSpinner from "../ui/LoadingSpinner";
 import { showToast } from "../ui/ToastManager";
 
@@ -8,7 +10,6 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // State for various settings
   const [notifications, setNotifications] = useState({
     email: true,
     push: true,
@@ -20,29 +21,25 @@ const Settings = () => {
   const [currency, setCurrency] = useState("usd");
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  // Personal information state
   const [personalInfo, setPersonalInfo] = useState({
     name: "",
     email: "",
     phone: "",
   });
 
-  // Password change state
   const [passwordForm, setPasswordForm] = useState({
     current: "",
     new: "",
     confirm: "",
   });
 
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
-
-  const fetchUserData = async () => {
+  // BUG FIX: fetchUserData was listed as a useEffect dependency but was
+  // redefined on every render, causing an infinite fetch loop.
+  // Wrapping in useCallback gives it a stable identity.
+  const fetchUserData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch user profile
       try {
         const profileResponse = await authAPI.getProfile();
         if (profileResponse.data.success && profileResponse.data.user) {
@@ -54,14 +51,11 @@ const Settings = () => {
             email: user.email || "",
             phone: user.phone || "",
           });
-
-          // Set currency preference if available
           if (user.preferred_currency) {
             setCurrency(user.preferred_currency.toLowerCase());
           }
         }
-      } catch (error) {
-        console.warn("Could not fetch profile:", error);
+      } catch {
         setPersonalInfo({
           name: "John Doe",
           email: "john.doe@example.com",
@@ -69,20 +63,19 @@ const Settings = () => {
         });
       }
 
-      // Fetch settings
       try {
         const settingsResponse = await settingsAPI.getSettings();
         if (settingsResponse.data.success && settingsResponse.data.settings) {
-          const settings = settingsResponse.data.settings;
+          const s = settingsResponse.data.settings;
           setNotifications({
-            email: settings.email_notifications !== false,
-            push: settings.push_notifications !== false,
-            sms: settings.sms_notifications !== false,
+            email: s.email_notifications !== false,
+            push: s.push_notifications !== false,
+            sms: s.sms_notifications !== false,
           });
-          setTwoFactorEnabled(settings.two_factor_enabled || false);
+          setTwoFactorEnabled(s.two_factor_enabled || false);
         }
-      } catch (error) {
-        console.warn("Could not fetch settings:", error);
+      } catch {
+        // Use defaults silently
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -90,35 +83,26 @@ const Settings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // stable — no external deps; API functions are module-level constants
 
-  // Handle notification toggle
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
+
   const handleNotificationToggle = (type) => {
-    setNotifications({
-      ...notifications,
-      [type]: !notifications[type],
-    });
+    setNotifications((prev) => ({ ...prev, [type]: !prev[type] }));
   };
 
-  // Handle personal info change
   const handlePersonalInfoChange = (e) => {
     const { name, value } = e.target;
-    setPersonalInfo({
-      ...personalInfo,
-      [name]: value,
-    });
+    setPersonalInfo((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle password change
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
-    setPasswordForm({
-      ...passwordForm,
-      [name]: value,
-    });
+    setPasswordForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle form submission
   const handleSubmit = async (e, formType) => {
     e.preventDefault();
     setSaving(true);
@@ -127,15 +111,11 @@ const Settings = () => {
       if (formType === "Account") {
         const [firstName, ...lastNameParts] = personalInfo.name.split(" ");
         const lastName = lastNameParts.join(" ");
-
-        const updateData = {
+        const response = await authAPI.updateProfile({
           first_name: firstName,
           last_name: lastName,
           phone: personalInfo.phone,
-        };
-
-        const response = await authAPI.updateProfile(updateData);
-
+        });
         if (response.data.success) {
           showToast("Account settings updated successfully!", "success");
         } else {
@@ -147,35 +127,27 @@ const Settings = () => {
           setSaving(false);
           return;
         }
-
         if (passwordForm.new.length < 8) {
           showToast("Password must be at least 8 characters long", "error");
           setSaving(false);
           return;
         }
-
         const response = await settingsAPI.changePassword({
           current_password: passwordForm.current,
           new_password: passwordForm.new,
         });
-
         if (response.data.success) {
           showToast("Password updated successfully!", "success");
-          setPasswordForm({
-            current: "",
-            new: "",
-            confirm: "",
-          });
+          setPasswordForm({ current: "", new: "", confirm: "" });
         } else {
           throw new Error(response.data.error || "Password update failed");
         }
       } else if (formType === "Preferences") {
         const response = await settingsAPI.updateSettings({
-          theme: theme,
-          language: language,
+          theme,
+          language,
           preferred_currency: currency.toUpperCase(),
         });
-
         if (response.data.success) {
           showToast("Preferences saved successfully!", "success");
         } else {
@@ -187,7 +159,6 @@ const Settings = () => {
           push_notifications: notifications.push,
           sms_notifications: notifications.sms,
         });
-
         if (response.data.success) {
           showToast("Notification settings updated successfully!", "success");
         } else {
@@ -211,11 +182,9 @@ const Settings = () => {
     try {
       setSaving(true);
       const newValue = !twoFactorEnabled;
-
       const response = newValue
         ? await settingsAPI.enable2FA()
         : await settingsAPI.disable2FA();
-
       if (response.data.success) {
         setTwoFactorEnabled(newValue);
         showToast(
@@ -236,6 +205,19 @@ const Settings = () => {
       setSaving(false);
     }
   };
+
+  const toggleSwitch = (enabled) => ({
+    width: "48px",
+    height: "24px",
+    cursor: saving ? "not-allowed" : "pointer",
+    appearance: "none",
+    backgroundColor: enabled ? "var(--success-color)" : "var(--border-color)",
+    borderRadius: "12px",
+    position: "relative",
+    transition: "var(--transition)",
+    border: "none",
+    outline: "none",
+  });
 
   if (loading) {
     return (
@@ -263,7 +245,6 @@ const Settings = () => {
             transition={{ delay: 0.1, duration: 0.5 }}
           >
             <h3 className="card-title">Account Settings</h3>
-
             <form onSubmit={(e) => handleSubmit(e, "Account")}>
               <div className="form-group">
                 <label className="form-label">Full Name</label>
@@ -276,7 +257,6 @@ const Settings = () => {
                   required
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">Email Address</label>
                 <input
@@ -289,7 +269,6 @@ const Settings = () => {
                   title="Email cannot be changed"
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">Phone Number</label>
                 <input
@@ -300,7 +279,6 @@ const Settings = () => {
                   onChange={handlePersonalInfoChange}
                 />
               </div>
-
               <button
                 type="submit"
                 className="btn btn-primary"
@@ -319,7 +297,6 @@ const Settings = () => {
             transition={{ delay: 0.2, duration: 0.5 }}
           >
             <h3 className="card-title">Security</h3>
-
             <form onSubmit={(e) => handleSubmit(e, "Password")}>
               <div className="form-group">
                 <label className="form-label">Current Password</label>
@@ -332,7 +309,6 @@ const Settings = () => {
                   required
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">New Password</label>
                 <input
@@ -345,7 +321,6 @@ const Settings = () => {
                   minLength="8"
                 />
               </div>
-
               <div className="form-group">
                 <label className="form-label">Confirm New Password</label>
                 <input
@@ -358,7 +333,6 @@ const Settings = () => {
                   minLength="8"
                 />
               </div>
-
               <button
                 type="submit"
                 className="btn btn-primary"
@@ -368,36 +342,26 @@ const Settings = () => {
               </button>
             </form>
 
-            <hr className="my-4" style={{ margin: "2rem 0" }} />
+            <hr
+              style={{ margin: "2rem 0", borderColor: "var(--border-color)" }}
+            />
 
-            <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="settings-toggle-row">
               <div>
-                <h4 className="mb-1">Two-Factor Authentication</h4>
-                <p className="text-secondary mb-0">
+                <h4 className="settings-toggle-title">
+                  Two-Factor Authentication
+                </h4>
+                <p className="settings-toggle-desc">
                   Add an extra layer of security to your account
                 </p>
               </div>
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={twoFactorEnabled}
-                  onChange={handleTwoFactorToggle}
-                  disabled={saving}
-                  style={{
-                    width: "48px",
-                    height: "24px",
-                    cursor: saving ? "not-allowed" : "pointer",
-                    appearance: "none",
-                    backgroundColor: twoFactorEnabled
-                      ? "var(--success-color)"
-                      : "var(--light-gray)",
-                    borderRadius: "12px",
-                    position: "relative",
-                    transition: "var(--transition)",
-                  }}
-                />
-              </div>
+              <input
+                type="checkbox"
+                checked={twoFactorEnabled}
+                onChange={handleTwoFactorToggle}
+                disabled={saving}
+                style={toggleSwitch(twoFactorEnabled)}
+              />
             </div>
           </motion.div>
 
@@ -409,7 +373,6 @@ const Settings = () => {
             transition={{ delay: 0.3, duration: 0.5 }}
           >
             <h3 className="card-title">Preferences</h3>
-
             <div className="form-group">
               <label className="form-label">Theme</label>
               <select
@@ -422,7 +385,6 @@ const Settings = () => {
                 <option value="system">System Default</option>
               </select>
             </div>
-
             <div className="form-group">
               <label className="form-label">Language</label>
               <select
@@ -437,7 +399,6 @@ const Settings = () => {
                 <option value="chinese">Chinese</option>
               </select>
             </div>
-
             <div className="form-group">
               <label className="form-label">Currency</label>
               <select
@@ -452,7 +413,6 @@ const Settings = () => {
                 <option value="cny">CNY (¥)</option>
               </select>
             </div>
-
             <button
               className="btn btn-primary"
               onClick={(e) => handleSubmit(e, "Preferences")}
@@ -471,97 +431,42 @@ const Settings = () => {
           >
             <h3 className="card-title">Notifications</h3>
 
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div>
-                <h4 className="mb-1">Email Notifications</h4>
-                <p className="text-secondary mb-0">
-                  Receive updates and alerts via email
-                </p>
-              </div>
-              <div className="form-check form-switch">
+            {[
+              {
+                key: "email",
+                label: "Email Notifications",
+                desc: "Receive updates and alerts via email",
+              },
+              {
+                key: "push",
+                label: "Push Notifications",
+                desc: "Receive notifications in your browser",
+              },
+              {
+                key: "sms",
+                label: "SMS Notifications",
+                desc: "Receive important alerts via SMS",
+              },
+            ].map(({ key, label, desc }) => (
+              <div key={key} className="settings-toggle-row">
+                <div>
+                  <h4 className="settings-toggle-title">{label}</h4>
+                  <p className="settings-toggle-desc">{desc}</p>
+                </div>
                 <input
-                  className="form-check-input"
                   type="checkbox"
-                  checked={notifications.email}
-                  onChange={() => handleNotificationToggle("email")}
-                  style={{
-                    width: "48px",
-                    height: "24px",
-                    cursor: "pointer",
-                    appearance: "none",
-                    backgroundColor: notifications.email
-                      ? "var(--success-color)"
-                      : "var(--light-gray)",
-                    borderRadius: "12px",
-                    position: "relative",
-                    transition: "var(--transition)",
-                  }}
+                  checked={notifications[key]}
+                  onChange={() => handleNotificationToggle(key)}
+                  style={toggleSwitch(notifications[key])}
                 />
               </div>
-            </div>
-
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div>
-                <h4 className="mb-1">Push Notifications</h4>
-                <p className="text-secondary mb-0">
-                  Receive notifications in your browser
-                </p>
-              </div>
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={notifications.push}
-                  onChange={() => handleNotificationToggle("push")}
-                  style={{
-                    width: "48px",
-                    height: "24px",
-                    cursor: "pointer",
-                    appearance: "none",
-                    backgroundColor: notifications.push
-                      ? "var(--success-color)"
-                      : "var(--light-gray)",
-                    borderRadius: "12px",
-                    position: "relative",
-                    transition: "var(--transition)",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <div>
-                <h4 className="mb-1">SMS Notifications</h4>
-                <p className="text-secondary mb-0">
-                  Receive important alerts via SMS
-                </p>
-              </div>
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  checked={notifications.sms}
-                  onChange={() => handleNotificationToggle("sms")}
-                  style={{
-                    width: "48px",
-                    height: "24px",
-                    cursor: "pointer",
-                    appearance: "none",
-                    backgroundColor: notifications.sms
-                      ? "var(--success-color)"
-                      : "var(--light-gray)",
-                    borderRadius: "12px",
-                    position: "relative",
-                    transition: "var(--transition)",
-                  }}
-                />
-              </div>
-            </div>
+            ))}
 
             <button
               className="btn btn-primary"
               onClick={(e) => handleSubmit(e, "Notifications")}
               disabled={saving}
+              style={{ marginTop: "1rem" }}
             >
               {saving ? "Saving..." : "Save Notification Settings"}
             </button>
@@ -570,18 +475,18 @@ const Settings = () => {
 
         {/* Danger Zone */}
         <motion.div
-          className="card mt-4"
+          className="card settings-danger-zone"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          style={{ borderColor: "var(--danger-color)" }}
         >
-          <h3 className="card-title text-danger">Danger Zone</h3>
-
-          <div className="d-flex justify-content-between align-items-center">
+          <h3 className="card-title" style={{ color: "var(--danger-color)" }}>
+            Danger Zone
+          </h3>
+          <div className="settings-toggle-row">
             <div>
-              <h4 className="mb-1">Delete Account</h4>
-              <p className="text-secondary mb-0">
+              <h4 className="settings-toggle-title">Delete Account</h4>
+              <p className="settings-toggle-desc">
                 Permanently delete your account and all associated data
               </p>
             </div>

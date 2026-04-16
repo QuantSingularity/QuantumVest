@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-// Custom hook for handling API requests with loading and error states
+// BUG FIX: execute was not memoized, causing it to be recreated on every render.
+// With immediate=true this triggered an infinite loop: render → new execute →
+// useEffect fires → setState → render → repeat.
+// Now execute is stable via useCallback with only apiFunction in deps.
 export const useApi = (
   apiFunction,
   initialData = null,
@@ -11,28 +15,34 @@ export const useApi = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const execute = async (...executeParams) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await apiFunction(
-        ...(executeParams.length > 0 ? executeParams : params),
-      );
-      setData(result);
-      return result;
-    } catch (err) {
-      setError(err.message || "An error occurred");
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const execute = useCallback(
+    async (...executeParams) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await apiFunction(
+          ...(executeParams.length > 0 ? executeParams : params),
+        );
+        setData(result);
+        return result;
+      } catch (err) {
+        setError(err.message || "An error occurred");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [apiFunction],
+  );
 
   useEffect(() => {
     if (immediate) {
       execute();
     }
-  }, [execute, immediate]); // eslint-disable-line react-hooks/exhaustive-deps
+    // execute is now stable; immediate is a prop that should not change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { data, loading, error, execute, setData };
 };
@@ -46,39 +56,24 @@ export const useForm = (initialValues = {}, validate = () => ({})) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setValues({
-      ...values,
-      [name]: value,
-    });
+    setValues((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleBlur = (e) => {
     const { name } = e.target;
-    setTouched({
-      ...touched,
-      [name]: true,
-    });
-
-    // Validate on blur
-    const validationErrors = validate(values);
-    setErrors(validationErrors);
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors(validate(values));
   };
 
   const handleSubmit = (callback) => (e) => {
     e.preventDefault();
-
-    // Mark all fields as touched
     const allTouched = Object.keys(values).reduce(
       (acc, key) => ({ ...acc, [key]: true }),
       {},
     );
     setTouched(allTouched);
-
-    // Validate all fields
     const validationErrors = validate(values);
     setErrors(validationErrors);
-
-    // If no errors, submit
     if (Object.keys(validationErrors).length === 0) {
       setIsSubmitting(true);
       callback(values);
@@ -134,19 +129,33 @@ export const useLocalStorage = (key, initialValue) => {
 
 // Custom hook for media queries
 export const useMediaQuery = (query) => {
-  const [matches, setMatches] = useState(false);
+  const [matches, setMatches] = useState(
+    () => window.matchMedia(query).matches,
+  );
 
   useEffect(() => {
     const media = window.matchMedia(query);
-    if (media.matches !== matches) {
-      setMatches(media.matches);
-    }
-
-    const listener = () => setMatches(media.matches);
+    const listener = (e) => setMatches(e.matches);
     media.addEventListener("change", listener);
-
     return () => media.removeEventListener("change", listener);
-  }, [matches, query]);
+  }, [query]);
 
   return matches;
+};
+
+// Custom hook for outside click detection
+export const useOutsideClick = (callback) => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        callback();
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [callback]);
+
+  return ref;
 };

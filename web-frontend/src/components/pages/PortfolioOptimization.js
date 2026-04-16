@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { portfolioAPI } from "../../services/api";
 import { showToast } from "../ui/ToastManager";
@@ -24,7 +25,6 @@ export default function PortfolioOptimization() {
 
   const handleAssetAllocationChange = (index, newValue) => {
     const updatedAssets = [...assets];
-    const _oldValue = updatedAssets[index].allocation;
     const newAllocation = parseInt(newValue, 10);
 
     updatedAssets[index].allocation = newAllocation;

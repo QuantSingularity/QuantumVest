@@ -1,25 +1,46 @@
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import "../../styles/Sidebar.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+const NAV_ITEMS = [
+  { to: "/dashboard", label: "Dashboard", icon: "📊" },
+  { to: "/", label: "Home", icon: "🏠" },
+  { to: "/predictions", label: "Predictions", icon: "📈" },
+  { to: "/optimize", label: "Portfolio", icon: "💼" },
+  { to: "/analytics", label: "Analytics", icon: "📉" },
+  { to: "/watchlist", label: "Watchlist", icon: "⭐" },
+  { to: "/settings", label: "Settings", icon: "⚙️" },
+];
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
   const location = useLocation();
-
-  const isActive = (path) => {
-    return location.pathname === path ? "active" : "";
-  };
+  const isActive = (path) => (location.pathname === path ? "active" : "");
 
   return (
     <>
-      {isOpen && (
-        <div className="sidebar-overlay" onClick={toggleSidebar}></div>
-      )}
-      <motion.aside
-        className={`sidebar ${!isOpen ? "sidebar-collapsed" : ""}`}
-        initial={{ x: -280 }}
-        animate={{ x: isOpen ? 0 : -280 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-      >
+      {/* Overlay: only rendered/animated on mobile (CSS hides on desktop) */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            className="sidebar-overlay active"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={toggleSidebar}
+          />
+        )}
+      </AnimatePresence>
+
+      {/*
+        BUG FIX: Previously framer-motion (animate={{ x: ... }}) and CSS
+        (.sidebar-collapsed { transform: translateX(-280px) }) both controlled
+        the same transform — causing a conflict and visual jitter.
+        Fix: drive open/close purely via CSS class; remove the Framer Motion
+        x animation so there is a single source of truth.
+      */}
+      <aside className={`sidebar ${isOpen ? "" : "sidebar-collapsed"}`}>
         <div className="sidebar-header">
           <div className="logo">
             <div className="logo-icon">Q</div>
@@ -29,57 +50,28 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
         <nav className="sidebar-nav">
           <ul>
-            <motion.li whileHover={{ x: 5 }} transition={{ duration: 0.2 }}>
-              <Link
-                to="/dashboard"
-                className={`nav-link ${isActive("/dashboard")}`}
+            {NAV_ITEMS.map(({ to, label, icon }) => (
+              <motion.li
+                key={to}
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
               >
-                <i className="nav-icon dashboard-icon"></i>
-                <span>Dashboard</span>
-              </Link>
-            </motion.li>
-            <motion.li whileHover={{ x: 5 }} transition={{ duration: 0.2 }}>
-              <Link to="/" className={`nav-link ${isActive("/")}`}>
-                <i className="nav-icon home-icon"></i>
-                <span>Home</span>
-              </Link>
-            </motion.li>
-            <motion.li whileHover={{ x: 5 }} transition={{ duration: 0.2 }}>
-              <Link
-                to="/predictions"
-                className={`nav-link ${isActive("/predictions")}`}
-              >
-                <i className="nav-icon predictions-icon"></i>
-                <span>Predictions</span>
-              </Link>
-            </motion.li>
-            <motion.li whileHover={{ x: 5 }} transition={{ duration: 0.2 }}>
-              <Link
-                to="/optimize"
-                className={`nav-link ${isActive("/optimize")}`}
-              >
-                <i className="nav-icon portfolio-icon"></i>
-                <span>Portfolio</span>
-              </Link>
-            </motion.li>
-            <motion.li whileHover={{ x: 5 }} transition={{ duration: 0.2 }}>
-              <Link
-                to="/analytics"
-                className={`nav-link ${isActive("/analytics")}`}
-              >
-                <i className="nav-icon analytics-icon"></i>
-                <span>Analytics</span>
-              </Link>
-            </motion.li>
-            <motion.li whileHover={{ x: 5 }} transition={{ duration: 0.2 }}>
-              <Link
-                to="/settings"
-                className={`nav-link ${isActive("/settings")}`}
-              >
-                <i className="nav-icon settings-icon"></i>
-                <span>Settings</span>
-              </Link>
-            </motion.li>
+                <Link
+                  to={to}
+                  className={`nav-link ${isActive(to)}`}
+                  onClick={() => {
+                    // On mobile, close sidebar after navigating
+                    if (window.innerWidth < 992) toggleSidebar();
+                  }}
+                >
+                  {/* FIX: render emoji directly; old code had empty <i> tags */}
+                  <span className="nav-icon" role="img" aria-hidden="true">
+                    {icon}
+                  </span>
+                  <span>{label}</span>
+                </Link>
+              </motion.li>
+            ))}
           </ul>
         </nav>
 
@@ -92,7 +84,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
             </div>
           </div>
         </div>
-      </motion.aside>
+      </aside>
     </>
   );
 };

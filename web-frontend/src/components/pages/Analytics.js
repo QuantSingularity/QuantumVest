@@ -1,3 +1,4 @@
+import React from "react";
 import {
   ArcElement,
   BarElement,
@@ -11,6 +12,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { motion } from "framer-motion";
+import "../../styles/Analytics.css";
 import { Bar, Line, Pie } from "react-chartjs-2";
 
 // Register ChartJS components
@@ -268,7 +270,7 @@ const Analytics = () => {
                   style={{
                     width: "80%",
                     height: "8px",
-                    backgroundColor: "var(--light-gray)",
+                    backgroundColor: "var(--border-color)",
                     borderRadius: "4px",
                   }}
                 >
@@ -293,7 +295,7 @@ const Analytics = () => {
                   style={{
                     width: "80%",
                     height: "8px",
-                    backgroundColor: "var(--light-gray)",
+                    backgroundColor: "var(--border-color)",
                     borderRadius: "4px",
                   }}
                 >
@@ -318,7 +320,7 @@ const Analytics = () => {
                   style={{
                     width: "80%",
                     height: "8px",
-                    backgroundColor: "var(--light-gray)",
+                    backgroundColor: "var(--border-color)",
                     borderRadius: "4px",
                   }}
                 >

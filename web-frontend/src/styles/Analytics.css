@@ -1,0 +1,12 @@
+/* Analytics.css */
+.analytics-page {
+  padding: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .analytics-page .grid-2,
+  .analytics-page .grid-3,
+  .analytics-page .grid-4 {
+    grid-template-columns: 1fr;
+  }
+}

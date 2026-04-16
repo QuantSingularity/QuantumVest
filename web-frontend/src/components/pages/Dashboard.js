@@ -1,3 +1,4 @@
+import React from "react";
 import { useEffect, useState } from "react";
 import { marketDataAPI, portfolioAPI } from "../../services/api";
 import LoadingSpinner from "../ui/LoadingSpinner";

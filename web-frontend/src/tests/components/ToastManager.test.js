@@ -1,3 +1,4 @@
+import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import ToastManager, { showToast } from "../../components/ui/ToastManager";
 

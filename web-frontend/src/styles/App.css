@@ -742,3 +742,165 @@ a:hover {
 .dark-theme ::-webkit-scrollbar-thumb:hover {
   background: var(--dark-text-secondary);
 }
+
+/* BUG FIX: ThemeContext sets data-theme attribute on documentElement,
+   but original CSS only targeted .dark-theme class. Add data-theme selectors. */
+[data-theme="dark"] body,
+[data-theme="dark"] {
+  background-color: var(--dark-background);
+  color: var(--dark-text-primary);
+}
+
+[data-theme="dark"] .card {
+  background-color: var(--dark-surface);
+  border-color: var(--dark-border-color);
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6 {
+  color: var(--dark-text-primary);
+}
+
+[data-theme="dark"] p {
+  color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] a {
+  color: var(--primary-light);
+}
+
+[data-theme="dark"] .section-title {
+  color: var(--dark-text-primary);
+}
+
+[data-theme="dark"] .form-label {
+  color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .form-control {
+  background-color: var(--dark-surface);
+  border-color: var(--dark-border-color);
+  color: var(--dark-text-primary);
+}
+
+[data-theme="dark"] .form-control:focus {
+  border-color: var(--primary-light);
+  background-color: var(--dark-surface);
+}
+
+/* Alias for legacy references */
+:root {
+  --light-gray: var(--border-color);
+}
+
+/* Homepage-mode: content uses full width, no padding offset */
+.content-wrapper.homepage-mode .main-content {
+  padding: 0;
+  max-width: 100%;
+}
+
+/* Responsive layout */
+@media (max-width: 992px) {
+  .content-wrapper.sidebar-open {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .main-content {
+    padding: var(--spacing-md);
+  }
+}
+
+/* ── Profile / static pages ────────────────────────────────────────────── */
+.profile-page {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 24px;
+  color: var(--text-primary);
+}
+
+.dark-theme .section-title,
+[data-theme="dark"] .section-title {
+  color: var(--dark-text-primary);
+}
+
+/* ── Contact grid: 2-col on desktop, 1-col on mobile ───────────────────── */
+.contact-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 720px) {
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Form helpers ───────────────────────────────────────────────────────── */
+.form-control.is-invalid {
+  border-color: var(--danger-color);
+}
+
+.field-error {
+  color: var(--danger-color);
+  font-size: 0.8rem;
+  margin: 4px 0 0;
+}
+
+/* ── Header action button (icon-only) ────────────────────────────────────── */
+.header-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--border-radius-sm);
+  position: relative;
+  transition: color 0.2s, background 0.2s;
+}
+
+.header-action-btn:hover {
+  color: var(--primary-color);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.dark-theme .header-action-btn,
+[data-theme="dark"] .header-action-btn {
+  color: var(--dark-text-secondary);
+}
+
+/* ── User dropdown divider ──────────────────────────────────────────────── */
+.user-dropdown-divider {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 4px 0;
+}
+
+.dark-theme .user-dropdown-divider,
+[data-theme="dark"] .user-dropdown-divider {
+  border-color: var(--dark-border-color);
+}
+
+/* ── Sidebar transition & nav icon (supplement Sidebar.css) ─────────────── */
+.sidebar {
+  transition: transform 0.3s ease-in-out;
+}

@@ -572,3 +572,39 @@
     font-size: 1rem;
   }
 }
+
+/* Sign In link in nav */
+.homepage-nav-link-secondary {
+  color: var(--text-dark);
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  transition: all 0.3s ease;
+}
+
+.homepage-nav-link-secondary:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* Dark theme nav */
+[data-theme="dark"] .homepage-nav-menu {
+  background-color: rgba(15, 23, 42, 0.92);
+}
+
+[data-theme="dark"] .homepage-nav-link {
+  color: var(--dark-text-secondary, #cbd5e1);
+}
+
+[data-theme="dark"] .homepage-nav-link:hover,
+[data-theme="dark"] .homepage-nav-link.active {
+  color: var(--primary-light, #3b82f6);
+}
+
+[data-theme="dark"] .homepage-nav-link-secondary {
+  color: var(--dark-text-secondary, #cbd5e1);
+  border-color: rgba(148, 163, 184, 0.3);
+}

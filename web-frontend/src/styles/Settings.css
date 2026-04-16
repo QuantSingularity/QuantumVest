@@ -1,0 +1,48 @@
+/* Settings.css */
+.settings-page {
+  padding: 1rem 0;
+}
+
+.settings-toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+  gap: 1rem;
+}
+
+[data-theme="dark"] .settings-toggle-row {
+  border-color: var(--dark-border-color);
+}
+
+.settings-toggle-row:last-of-type {
+  border-bottom: none;
+}
+
+.settings-toggle-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .settings-toggle-title {
+  color: var(--dark-text-primary);
+}
+
+.settings-toggle-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.settings-danger-zone {
+  border: 1px solid var(--danger-color) !important;
+}
+
+@media (max-width: 768px) {
+  .settings-page .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

@@ -23,6 +23,19 @@
   transform: translateX(-280px);
 }
 
+/* Ensure smooth class-driven open/close (Framer Motion x is NOT used for this) */
+.sidebar {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Nav icon: display the emoji with proper sizing */
+.nav-icon {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 .sidebar-header {
   padding: var(--spacing-lg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -195,6 +208,34 @@
     display: none;
   }
 
+  .sidebar-overlay.active {
+    display: block;
+  }
+}
+
+/* Missing icon definitions */
+.home-icon::before {
+  content: "🏠";
+}
+
+.watchlist-icon::before {
+  content: "⭐";
+}
+
+/* Fix overlay: hidden by default on desktop, shown only on mobile when active */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+  cursor: pointer;
+}
+
+@media (max-width: 992px) {
   .sidebar-overlay.active {
     display: block;
   }

@@ -1,3 +1,4 @@
+import React from "react";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
@@ -56,7 +57,16 @@ const Homepage = () => {
             <Link to="/dashboard">
               <button className="hero-cta-primary">Get Started</button>
             </Link>
-            <button className="hero-cta-secondary">Learn More</button>
+            <button
+              className="hero-cta-secondary"
+              onClick={() =>
+                document
+                  .getElementById("features")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              Learn More
+            </button>
           </motion.div>
         </div>
         <div className="hero-background">
@@ -103,7 +113,7 @@ const Homepage = () => {
       </section>
 
       {/* Features Section */}
-      <section className="features-section">
+      <section className="features-section" id="features">
         <motion.h2
           className="section-title"
           initial={{ opacity: 0, y: 20 }}

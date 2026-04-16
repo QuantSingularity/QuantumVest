@@ -25,7 +25,7 @@
 
 .stat-card h3 {
   font-size: 1rem;
-  color: var(--dark-gray);
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
@@ -114,4 +114,48 @@
   .stats-overview {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dark theme fixes */
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .market-card,
+[data-theme="dark"] .loading-container,
+[data-theme="dark"] .error-container,
+[data-theme="dark"] .no-data-message,
+[data-theme="dark"] .portfolio-summary {
+  background-color: var(--dark-surface);
+  color: var(--dark-text-primary);
+  border: 1px solid var(--dark-border-color);
+}
+
+[data-theme="dark"] .market-card-header {
+  background-color: var(--primary-dark);
+}
+
+.portfolio-summary {
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-top: 2rem;
+  box-shadow: var(--box-shadow);
+}
+
+.portfolio-info p {
+  margin-bottom: 0.5rem;
+}
+
+.retry-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 1rem;
+  transition: var(--transition-fast);
+}
+
+.retry-button:hover {
+  background: var(--primary-dark);
 }

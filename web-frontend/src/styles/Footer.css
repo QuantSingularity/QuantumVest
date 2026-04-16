@@ -141,3 +141,20 @@
     justify-content: center;
   }
 }
+
+[data-theme="dark"] .footer {
+  background-color: var(--dark-surface);
+  border-top-color: var(--dark-border-color);
+}
+
+[data-theme="dark"] .footer-logo-text,
+[data-theme="dark"] .footer-copyright,
+[data-theme="dark"] .footer-link,
+[data-theme="dark"] .social-icon {
+  color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .footer-link:hover,
+[data-theme="dark"] .social-icon:hover {
+  color: var(--dark-text-primary);
+}

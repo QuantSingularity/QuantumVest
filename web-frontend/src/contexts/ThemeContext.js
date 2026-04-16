@@ -11,7 +11,10 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     const savedTheme = storage.get("theme", "light");
     setTheme(savedTheme);
+    // Apply BOTH mechanisms: data-theme on <html> for CSS var overrides,
+    // AND dark-theme class on <body> so all ".dark-theme X" selectors match.
     document.documentElement.setAttribute("data-theme", savedTheme);
+    document.body.classList.toggle("dark-theme", savedTheme === "dark");
   }, []);
 
   // Toggle theme function
@@ -20,6 +23,7 @@ export const ThemeProvider = ({ children }) => {
     setTheme(newTheme);
     storage.set("theme", newTheme);
     document.documentElement.setAttribute("data-theme", newTheme);
+    document.body.classList.toggle("dark-theme", newTheme === "dark");
   };
 
   return (

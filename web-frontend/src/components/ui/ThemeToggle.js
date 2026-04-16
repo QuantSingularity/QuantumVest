@@ -1,22 +1,12 @@
-import { useState } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 import "../../styles/ThemeToggle.css";
 
+// BUG FIX: Component previously kept its own isolated isDarkMode state
+// instead of reading from ThemeContext, so the toggle was out of sync with
+// the Header's theme button and with localStorage persistence.
 const ThemeToggle = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-
-    // Apply theme to document
-    document.documentElement.setAttribute(
-      "data-theme",
-      newMode ? "dark" : "light",
-    );
-
-    // Save preference to localStorage
-    localStorage.setItem("theme", newMode ? "dark" : "light");
-  };
+  const { theme, toggleTheme } = useTheme();
+  const isDarkMode = theme === "dark";
 
   return (
     <div className="theme-toggle">
