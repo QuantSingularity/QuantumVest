@@ -2,7 +2,6 @@
   "name": "quantumvest-frontend",
   "version": "1.0.0",
   "description": "Frontend for QuantumVest - Predictive Investment Analytics Platform",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "start": "vite",
@@ -49,8 +48,8 @@
       "^.+\\.(js|jsx)$": "babel-jest"
     },
     "testMatch": [
-      "**/src/tests/**/*.test.js",
-      "**/src/**/*.test.js"
+      "**/src/tests/**/*.test.{js,jsx}",
+      "**/src/**/*.test.{js,jsx}"
     ],
     "collectCoverageFrom": [
       "src/**/*.{js,jsx}",

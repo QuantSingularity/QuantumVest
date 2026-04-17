@@ -5,17 +5,14 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
 const container = document.getElementById("root");
+const root = createRoot(container);
 
-if (container) {
-  const root = createRoot(container);
-
-  root.render(
-    <React.StrictMode>
-      <ThemeProvider>
-        <NotificationProvider>
-          <App />
-        </NotificationProvider>
-      </ThemeProvider>
-    </React.StrictMode>,
-  );
-}
+root.render(
+  <React.StrictMode>
+    <ThemeProvider>
+      <NotificationProvider>
+        <App />
+      </NotificationProvider>
+    </ThemeProvider>
+  </React.StrictMode>,
+);
