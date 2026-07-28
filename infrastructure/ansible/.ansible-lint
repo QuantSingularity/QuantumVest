@@ -1,61 +1,22 @@
-# Ansible Lint Configuration for QuantumVest
 ---
-# Exclude paths
+# Rewritten for schema compatibility with current ansible-lint (26.x). The
+# previous version used "parseable" and "warnings_as_errors" top-level keys
+# and a custom "rules:" severity-override block, none of which are valid in
+# this schema — ansible-lint refused to even start ("Invalid configuration
+# file ... Additional properties are not allowed").
 exclude_paths:
   - .cache/
   - .git/
   - .github/
   - venv/
   - '*.tar.gz'
-
-# Enable checking of loop variable prefixes
-loop_var_prefix: "^(__|{role}_)"
-
-# Offline mode
 offline: false
-
-# Parseable output
-parseable: false
-
-# Quiet mode
 quiet: false
-
-# Verbosity
 verbosity: 1
-
-# Enforce use of command instead of shell when possible
 use_default_rules: true
-
-# Warn on specific rules
 warn_list:
   - experimental
   - role-name
-
-# Skip specific rules
 skip_list:
-  - yaml[line-length]  # Allow longer lines in some cases
-  - fqcn[action-core]  # Allow short module names for readability
-
-# Tags to run
-# tags: []
-
-# Set warning behavior
-warnings_as_errors: false
-
-# Rules configuration
-rules:
-  # Command module should not be used in place of more specific modules
-  command-instead-of-module:
-    severity: HIGH
-
-  # Tasks should have names
-  name[play]:
-    severity: MEDIUM
-
-  # Role name should match pattern
-  role-name:
-    severity: LOW
-    
-  # YAML formatting
-  yaml:
-    severity: LOW
+  - yaml[line-length]
+  - fqcn[action-core]

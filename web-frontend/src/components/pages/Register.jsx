@@ -1,15 +1,19 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { authAPI } from "../../services/api";
-import "../../styles/Auth.css";
-import { showToast } from "../ui/ToastManager";
+import AuthLayout from "../layout/AuthLayout";
+import { useAuth } from "../../contexts/AuthContext";
+import { showToast } from "../../utils/helpers";
+
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,30}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const Register = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [form, setForm] = useState({
-    name: "",
+    first_name: "",
+    last_name: "",
+    username: "",
     email: "",
     password: "",
     confirm: "",
@@ -19,9 +23,12 @@ const Register = () => {
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Full name is required";
+    if (!form.first_name.trim()) e.first_name = "First name is required";
+    if (!form.username.trim()) e.username = "Choose a username";
+    else if (!USERNAME_RE.test(form.username.trim()))
+      e.username = "3-30 characters: letters, numbers, underscore only";
     if (!form.email) e.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+    else if (!EMAIL_RE.test(form.email))
       e.email = "Enter a valid email address";
     if (!form.password) e.password = "Password is required";
     else if (form.password.length < 8)
@@ -46,154 +53,157 @@ const Register = () => {
       return;
     }
 
-    try {
-      setLoading(true);
-      const [firstName, ...rest] = form.name.trim().split(" ");
-      const response = await authAPI.register({
-        first_name: firstName,
-        last_name: rest.join(" "),
-        email: form.email,
-        password: form.password,
-      });
+    setLoading(true);
+    const result = await register({
+      username: form.username.trim(),
+      email: form.email.trim(),
+      password: form.password,
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim() || undefined,
+    });
+    setLoading(false);
 
-      if (response.data.success) {
-        showToast("Account created! Welcome to QuantumVest.", "success");
-        navigate("/dashboard");
-      } else {
-        throw new Error(response.data.error || "Registration failed");
-      }
-    } catch (err) {
-      console.warn("API register unavailable, using demo mode:", err.message);
-      showToast("Account created (demo mode)!", "info");
-      navigate("/dashboard");
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      showToast("Account created — welcome to QuantumVest!", "success");
+      navigate("/dashboard", { replace: true });
+    } else {
+      setErrors({ form: result.error });
+      showToast(result.error, "error");
     }
   };
 
   return (
-    <div className="auth-page">
-      <motion.div
-        className="auth-card"
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="auth-logo">
-          <div className="auth-logo-icon">Q</div>
-          <span className="auth-logo-text">QuantumVest</span>
+    <AuthLayout eyebrow="Create account">
+      <h1 className="auth-title">Create your account</h1>
+      <p className="auth-subtitle">Start your AI-powered investment journey</p>
+
+      {errors.form && <div className="auth-alert">{errors.form}</div>}
+
+      <form onSubmit={handleSubmit} className="auth-form" noValidate>
+        <div className="grid grid-2" style={{ gap: "0.75rem" }}>
+          <div className="field">
+            <label htmlFor="first_name">First name</label>
+            <input
+              id="first_name"
+              type="text"
+              name="first_name"
+              className={`input ${errors.first_name ? "has-error" : ""}`}
+              value={form.first_name}
+              onChange={handleChange}
+              placeholder="Jane"
+              autoComplete="given-name"
+              autoFocus
+            />
+            {errors.first_name && (
+              <p className="field-error">{errors.first_name}</p>
+            )}
+          </div>
+          <div className="field">
+            <label htmlFor="last_name">Last name</label>
+            <input
+              id="last_name"
+              type="text"
+              name="last_name"
+              className="input"
+              value={form.last_name}
+              onChange={handleChange}
+              placeholder="Doe"
+              autoComplete="family-name"
+            />
+          </div>
         </div>
 
-        <h1 className="auth-title">Create your account</h1>
-        <p className="auth-subtitle">
-          Start your AI-powered investment journey
-        </p>
+        <div className="field">
+          <label htmlFor="username">Username</label>
+          <input
+            id="username"
+            type="text"
+            name="username"
+            className={`input ${errors.username ? "has-error" : ""}`}
+            value={form.username}
+            onChange={handleChange}
+            placeholder="janedoe"
+            autoComplete="username"
+          />
+          {errors.username && <p className="field-error">{errors.username}</p>}
+        </div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label className="form-label" htmlFor="name">
-              Full Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              name="name"
-              className={`form-control ${errors.name ? "is-invalid" : ""}`}
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Jane Doe"
-              autoComplete="name"
-            />
-            {errors.name && <p className="field-error">{errors.name}</p>}
-          </div>
+        <div className="field">
+          <label htmlFor="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            name="email"
+            className={`input ${errors.email ? "has-error" : ""}`}
+            value={form.email}
+            onChange={handleChange}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
+          {errors.email && <p className="field-error">{errors.email}</p>}
+        </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="email">
-              Email Address
-            </label>
-            <input
-              id="email"
-              type="email"
-              name="email"
-              className={`form-control ${errors.email ? "is-invalid" : ""}`}
-              value={form.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
-            {errors.email && <p className="field-error">{errors.email}</p>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="password">
-              Password
-            </label>
+        <div className="grid grid-2" style={{ gap: "0.75rem" }}>
+          <div className="field">
+            <label htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
               name="password"
-              className={`form-control ${errors.password ? "is-invalid" : ""}`}
+              className={`input ${errors.password ? "has-error" : ""}`}
               value={form.password}
               onChange={handleChange}
-              placeholder="Minimum 8 characters"
+              placeholder="Min. 8 characters"
               autoComplete="new-password"
             />
             {errors.password && (
               <p className="field-error">{errors.password}</p>
             )}
           </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="confirm">
-              Confirm Password
-            </label>
+          <div className="field">
+            <label htmlFor="confirm">Confirm password</label>
             <input
               id="confirm"
               type="password"
               name="confirm"
-              className={`form-control ${errors.confirm ? "is-invalid" : ""}`}
+              className={`input ${errors.confirm ? "has-error" : ""}`}
               value={form.confirm}
               onChange={handleChange}
-              placeholder="Repeat your password"
+              placeholder="Repeat password"
               autoComplete="new-password"
             />
             {errors.confirm && <p className="field-error">{errors.confirm}</p>}
           </div>
+        </div>
 
-          <p className="auth-terms">
-            By registering you agree to our{" "}
-            <Link to="#" className="auth-link">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link to="#" className="auth-link">
-              Privacy Policy
-            </Link>
-            .
-          </p>
-
-          <button
-            type="submit"
-            className="btn btn-primary auth-submit"
-            disabled={loading}
-          >
-            {loading ? "Creating account…" : "Create Account"}
-          </button>
-        </form>
-
-        <p className="auth-switch">
-          Already have an account?{" "}
-          <Link to="/login" className="auth-link">
-            Sign in
+        <p className="auth-terms">
+          By registering you agree to our{" "}
+          <Link to="/terms" className="auth-link">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="auth-link">
+            Privacy Policy
           </Link>
+          .
         </p>
-      </motion.div>
 
-      <div className="auth-bg" aria-hidden="true">
-        <div className="auth-bg-circle auth-bg-circle-1" />
-        <div className="auth-bg-circle auth-bg-circle-2" />
-      </div>
-    </div>
+        <button
+          type="submit"
+          className="btn btn-primary btn-block auth-submit"
+          disabled={loading}
+        >
+          {loading ? "Creating account…" : "Create Account"}
+        </button>
+      </form>
+
+      <p className="auth-switch">
+        Already have an account?{" "}
+        <Link to="/login" className="auth-link">
+          Sign in
+        </Link>
+      </p>
+    </AuthLayout>
   );
 };
 

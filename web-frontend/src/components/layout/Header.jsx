@@ -1,10 +1,12 @@
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../styles/Header.css";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useNotifications } from "../../contexts/NotificationContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { getInitials } from "../../utils/helpers";
 
 const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -12,6 +14,7 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const { theme, toggleTheme } = useTheme();
   const { notifications, markAllAsRead, markAsRead } = useNotifications();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const userMenuRef = useRef(null);
@@ -19,7 +22,6 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // FIX: Close dropdowns when user clicks outside them
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -36,16 +38,14 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Navigate to dashboard with search; extend later
-      navigate(`/dashboard?q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/watchlist?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+  const handleLogout = async () => {
     setUserMenuOpen(false);
+    await logout();
     navigate("/");
   };
 
@@ -53,6 +53,11 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
     hidden: { opacity: 0, scale: 0.95, y: -8 },
     visible: { opacity: 1, scale: 1, y: 0 },
   };
+
+  const displayName = user
+    ? [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+      user.username
+    : "Guest";
 
   return (
     <motion.header
@@ -69,8 +74,8 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
+            width="22"
+            height="22"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -87,7 +92,6 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
       </div>
 
       <div className="header-right">
-        {/* FIX: search now has a submit handler */}
         <form className="search-bar" onSubmit={handleSearch}>
           <span className="search-icon">
             <svg
@@ -108,15 +112,14 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
           <input
             type="text"
             className="search-input"
-            placeholder="Search..."
+            placeholder="Search assets (e.g. AAPL, BTC)…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search"
+            aria-label="Search assets"
           />
         </form>
 
         <div className="header-actions">
-          {/* Theme toggle */}
           <button
             className="header-action-btn"
             onClick={toggleTheme}
@@ -125,8 +128,8 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
             {theme === "light" ? (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="19"
+                height="19"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -139,8 +142,8 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
             ) : (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="19"
+                height="19"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -161,7 +164,6 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
             )}
           </button>
 
-          {/* FIX: Notification bell now opens a panel connected to NotificationContext */}
           <div className="notif-wrapper" ref={notifRef}>
             <button
               className="header-action-btn"
@@ -173,8 +175,8 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
+                width="19"
+                height="19"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -213,9 +215,11 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                   </div>
                   <div className="notif-dropdown-body">
                     {notifications.length === 0 ? (
-                      <p className="notif-empty">No notifications</p>
+                      <p className="notif-empty">
+                        You&apos;re all caught up — nothing new yet.
+                      </p>
                     ) : (
-                      notifications.slice(0, 6).map((n) => (
+                      notifications.slice(0, 8).map((n) => (
                         <div
                           key={n.id}
                           className={`notif-item ${n.read ? "read" : "unread"}`}
@@ -237,7 +241,6 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
             </AnimatePresence>
           </div>
 
-          {/* FIX: User dropdown items now navigate and close the menu */}
           <div className="user-dropdown" ref={userMenuRef}>
             <div
               className="user-dropdown-toggle"
@@ -246,10 +249,11 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                 setNotifOpen(false);
               }}
               role="button"
+              tabIndex={0}
               aria-haspopup="true"
               aria-expanded={userMenuOpen}
             >
-              <div className="user-avatar">JD</div>
+              <div className="user-avatar">{getInitials(user)}</div>
             </div>
 
             <AnimatePresence>
@@ -262,6 +266,11 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                   exit="hidden"
                   transition={{ duration: 0.18 }}
                 >
+                  <div className="user-dropdown-name">
+                    <p className="user-dropdown-fullname">{displayName}</p>
+                    <p className="user-dropdown-email">{user?.email}</p>
+                  </div>
+                  <hr className="user-dropdown-divider" />
                   <div
                     className="user-dropdown-item"
                     onClick={() => {
@@ -328,7 +337,7 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                       <polyline points="16 17 21 12 16 7" />
                       <line x1="21" y1="12" x2="9" y2="12" />
                     </svg>
-                    <span>Logout</span>
+                    <span>Log out</span>
                   </div>
                 </motion.div>
               )}

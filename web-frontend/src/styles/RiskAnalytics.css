@@ -1,0 +1,23 @@
+.risk-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: var(--space-sm);
+  align-items: end;
+  margin-bottom: var(--space-sm);
+}
+
+.risk-controls .field {
+  margin-bottom: 0;
+}
+
+@media (max-width: 960px) {
+  .risk-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.risk-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}

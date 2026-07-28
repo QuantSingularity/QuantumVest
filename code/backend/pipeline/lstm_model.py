@@ -66,12 +66,8 @@ class LSTMModel:
 
     @staticmethod
     def _build_keras(seq_len: int):
-        from tensorflow.keras.layers import (
-            LSTM,  # type: ignore
-            BatchNormalization,
-            Dense,
-            Dropout,
-        )
+        from tensorflow.keras.layers import LSTM  # type: ignore
+        from tensorflow.keras.layers import BatchNormalization, Dense, Dropout
         from tensorflow.keras.models import Sequential  # type: ignore
         from tensorflow.keras.optimizers import Adam  # type: ignore
 

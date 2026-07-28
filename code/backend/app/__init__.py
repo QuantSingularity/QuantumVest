@@ -4,9 +4,10 @@ QuantumVest Flask application factory.
 
 import logging
 import os
+import time
 
 from config import get_config
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,6 +38,51 @@ def create_app(config_name: str = None) -> Flask:
     from app.api.v1.routes import api_bp
 
     app.register_blueprint(api_bp)
+
+    # ---------- Prometheus metrics ----------
+    # infrastructure/monitoring/prometheus-config.yaml and
+    # prometheus-local.yml both scrape this backend for metrics, and its
+    # alert rules reference http_requests_total / http_request_duration_seconds
+    # by name, so these need to match exactly.
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        Counter,
+        Histogram,
+        generate_latest,
+    )
+
+    http_requests_total = Counter(
+        "http_requests_total",
+        "Total HTTP requests",
+        ["method", "endpoint", "status"],
+    )
+    http_request_duration_seconds = Histogram(
+        "http_request_duration_seconds",
+        "HTTP request duration in seconds",
+        ["method", "endpoint"],
+    )
+
+    @app.before_request
+    def _start_timer():
+        request._metrics_start_time = time.time()
+
+    @app.after_request
+    def _record_metrics(response):
+        endpoint = request.url_rule.rule if request.url_rule else "unmatched"
+        if endpoint != "/metrics":
+            http_requests_total.labels(
+                method=request.method, endpoint=endpoint, status=response.status_code
+            ).inc()
+            start = getattr(request, "_metrics_start_time", None)
+            if start is not None:
+                http_request_duration_seconds.labels(
+                    method=request.method, endpoint=endpoint
+                ).observe(time.time() - start)
+        return response
+
+    @app.route("/metrics")
+    def metrics():
+        return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
 
     # Create tables & seed default assets
     with app.app_context():

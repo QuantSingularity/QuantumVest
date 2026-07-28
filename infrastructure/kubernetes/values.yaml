@@ -1,0 +1,154 @@
+# Default values for the quantumvest chart (dev-like baseline).
+# For staging/prod, install with an override file, e.g.:
+#   helm install quantumvest . -f environments/prod/values.yaml
+appName: quantumvest
+namespace: quantumvest-dev
+environment: dev
+
+backend:
+  replicas: 2
+  image:
+    repository: registry.example.com/app/backend
+    tag: latest
+    pullPolicy: Always
+  containerPort: 8080
+  servicePort: 80
+  metrics:
+    port: 9090
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+      storage: 500Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+      storage: 250Mi
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  deployment:
+    maxSurge: "25%"
+    maxUnavailable: "25%"
+  probes:
+    liveness:
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+    readiness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    startup:
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30
+  apiUrl: http://quantumvest-backend
+  # Secrets must be provided via external-secrets or Vault - never set here in plain text
+  jwtSecret: ""
+  apiKey: ""
+  encryptionKey: ""
+  apiKeyHash: ""
+  logLevel: debug
+  terminationGracePeriodSeconds: 30
+
+frontend:
+  replicas: 2
+  image:
+    repository: registry.example.com/app/frontend
+    tag: latest
+    pullPolicy: Always
+  containerPort: 80
+  servicePort: 80
+  apiUrl: /api
+  service:
+    type: ClusterIP
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+database:
+  replicas: 1
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  containerPort: 3306
+  servicePort: 3306
+  name: quantumvestdb
+  user: appuser
+  # Secrets must be provided via external-secrets or Vault — never set here in plain text
+  url: ""
+  rootPassword: ""
+  password: ""
+  storageClass: standard
+  storage: 10Gi
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+redis:
+  replicas: 1
+  # Secrets must be provided via external-secrets or Vault — never set here in plain text
+  url: ""
+  # redis-server's --maxmemory needs its own unit suffixes (mb/gb), not
+  # Kubernetes' Mi/Gi — keep this roughly in line with resources.limits.memory below.
+  maxmemory: "400mb"
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  containerPort: 6379
+  servicePort: 6379
+  storageClass: standard
+  storage: 5Gi
+  resources:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+ingress:
+  host: dev.quantumvest.example.com
+  class: nginx
+  sslRedirect: "true"
+  certManager:
+    issuer: letsencrypt-staging
+
+vault:
+  address: https://vault.example.com
+  image:
+    tag: "1.15.2"
+
+logLevel: debug
+imagePullSecrets: regcred
+
+# Referenced by templates/resource-quota.yaml — must exist as at least an
+# empty "hard" map, or Helm errors on the nil-chain before the `| default`
+# fallbacks in that template ever get a chance to apply.
+resourceQuota:
+  hard:
+    requests_cpu: "10"
+    requests_memory: "20Gi"
+    limits_cpu: "20"
+    limits_memory: "40Gi"
+    persistentvolumeclaims: "10"

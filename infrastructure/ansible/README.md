@@ -53,9 +53,9 @@ ansible all -m ping -i inventory/hosts.yml
 ### 2. Install Ansible Collections
 
 ```bash
-# Install required collections
-ansible-galaxy collection install community.general
-ansible-galaxy collection install ansible.posix
+# Installs community.general, community.mysql, and ansible.posix —
+# see requirements.yml for exact version constraints.
+ansible-galaxy collection install -r requirements.yml
 ```
 
 ### 3. Validate Configuration
@@ -203,34 +203,22 @@ ansible-playbook playbooks/main.yml --limit databases --tags database
 
 ### Group Variables
 
-Create `group_vars/` directory and files:
-
-**group_vars/all.yml** (applies to all hosts):
-
-```yaml
----
-# Common variables
-ntp_server: time.nist.gov
-timezone: America/New_York
-```
-
-**group_vars/webservers.yml**:
+`group_vars/all/vars.yml` (already created — applies to all hosts; this is
+where `app_name`, `server_name`, `db_name`, and `db_user` are defined, since
+`webserver` and `database` role tasks/templates reference them directly):
 
 ```yaml
 ---
-# Webserver-specific variables
-nginx_port: 80
-nginx_ssl_port: 443
+app_name: quantumvest
+server_name: _ # nginx catch-all; override with your real domain
+db_name: quantumvestdb
+db_user: appuser
+db_root_password: "{{ vault_mysql_root_password }}"
+db_password: "{{ vault_db_password }}"
 ```
 
-**group_vars/databases.yml**:
-
-```yaml
----
-# Database-specific variables
-mysql_port: 3306
-mysql_max_connections: 200
-```
+For group-specific overrides, add `group_vars/webservers.yml` /
+`group_vars/databases.yml` alongside it.
 
 ### Host Variables
 
@@ -245,11 +233,15 @@ nginx_worker_processes: 4
 
 ### Vault for Secrets
 
-```bash
-# Create encrypted variable file
-ansible-vault create group_vars/all/vault.yml
+`group_vars/all/vars.yml` references `vault_mysql_root_password` and
+`vault_db_password`, which come from an ansible-vault-encrypted file in the
+same directory — copy the example and encrypt it:
 
-# Edit encrypted file
+```bash
+cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+ansible-vault encrypt group_vars/all/vault.yml
+
+# Edit later
 ansible-vault edit group_vars/all/vault.yml
 
 # Run playbook with vault
@@ -257,14 +249,6 @@ ansible-playbook playbooks/main.yml --ask-vault-pass
 
 # Or use vault password file
 ansible-playbook playbooks/main.yml --vault-password-file ~/.vault_pass
-```
-
-Example vault.yml:
-
-```yaml
----
-vault_mysql_root_password: "supersecret"
-vault_db_password: "anothersecret"
 ```
 
 ## Ad-Hoc Commands

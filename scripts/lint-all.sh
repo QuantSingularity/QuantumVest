@@ -70,37 +70,26 @@ echo "----------------------------------------"
 echo "Installing/Updating Python linting tools..."
 pip3 install --upgrade black isort flake8 pylint
 
-# Install global npm packages for JavaScript/TypeScript linting
+# Install global npm packages for JavaScript/TypeScript linting. These are a
+# fallback only — each frontend's own local eslint/plugins (installed via
+# its package.json) are preferred when we cd into that project below.
 echo "----------------------------------------"
 echo "Installing/Updating JavaScript linting tools..."
-npm install -g eslint prettier eslint-plugin-react
+npm install -g eslint prettier eslint-plugin-react eslint-plugin-react-hooks
 
-# Define directories to process
+# Define directories to process. These are real top-level directories —
+# black/isort/flake8/pylint/eslint/prettier all recurse into subdirectories
+# on their own, so there's no need (and no accuracy benefit) to enumerate
+# every subdirectory by hand.
 PYTHON_DIRECTORIES=(
   "code/backend"
-  "code/backend/api"
-  "code/backend/core"
-  "code/backend/services"
-  "code/backend/tests"
-  "code/quantum"
-  "code/quantum/algorithms"
-  "code/quantum/circuits"
-  "code/quantum/optimization"
-  "code/quantum/utils"
+  "code/ai_models"
 )
 
 JS_DIRECTORIES=(
-  "code/frontend/src"
-  "code/frontend/src/api"
-  "code/frontend/src/components"
-  "code/frontend/src/components/analytics"
-  "code/frontend/src/components/dashboard"
-  "code/frontend/src/components/portfolio"
-  "code/frontend/src/components/ui"
-  "code/frontend/src/contexts"
-  "code/frontend/src/hooks"
-  "code/frontend/src/tests"
-  "code/frontend/src/utils"
+  "web-frontend/src"
+  "mobile-frontend/src"
+  "code/blockchain"
 )
 
 YAML_DIRECTORIES=(
@@ -109,10 +98,11 @@ YAML_DIRECTORIES=(
   ".github/workflows"
 )
 
+# terraform fmt/validate are recursive, so only the top-level directory is
+# needed — infrastructure/terraform/{modules,environments} are covered
+# automatically.
 TERRAFORM_DIRECTORIES=(
   "infrastructure/terraform"
-  "infrastructure/terraform/environments"
-  "infrastructure/terraform/modules"
 )
 
 # 1. Python Linting
@@ -166,7 +156,7 @@ echo "Running pylint for more comprehensive linting..."
 for dir in "${PYTHON_DIRECTORIES[@]}"; do
   if [ -d "$dir" ]; then
     echo "Linting Python files in $dir with pylint..."
-    find "$dir" -type f -name "*.py" | xargs python3 -m pylint --disable=C0111,C0103,C0303,W0621,C0301,W0612,W0611,R0913,R0914,R0915 || {
+    find "$dir" -type f -name "*.py" -print0 | xargs -0 -r python3 -m pylint --disable=C0111,C0103,C0303,W0621,C0301,W0612,W0611,R0913,R0914,R0915 || {
       echo "Pylint found issues in $dir. Please review the above warnings/errors."
     }
   else
@@ -179,7 +169,8 @@ echo "Pylint linting completed."
 echo "----------------------------------------"
 echo "Running JavaScript/TypeScript linting tools..."
 
-# 2.1 Create ESLint config if it doesn't exist
+# 2.1 Create ESLint config if it doesn't exist (only relevant for
+# directories without their own config, e.g. code/blockchain)
 if [ ! -f ".eslintrc.js" ] && [ ! -f ".eslintrc.json" ] && [ ! -f "eslint.config.js" ]; then
   echo "Creating ESLint configuration..."
   cat > .eslintrc.js << EOF
@@ -230,13 +221,18 @@ if [ ! -f ".prettierrc.json" ] && [ ! -f ".prettierrc.js" ]; then
 EOF
 fi
 
-# 2.3 Run ESLint
+# 2.3 Run ESLint. Each JS_DIRECTORIES entry is inside a project
+# (web-frontend, mobile-frontend, code/blockchain) that may have its own
+# local eslint + plugins installed via package.json — cd into that project
+# root first so npx resolves those local versions instead of silently
+# falling back to whatever's installed globally.
 echo "Running ESLint for JavaScript/TypeScript files..."
 for dir in "${JS_DIRECTORIES[@]}"; do
   if [ -d "$dir" ]; then
+    project_root=$(dirname "$dir")
+    rel_dir=$(basename "$dir")
     echo "Linting JavaScript/TypeScript files in $dir with ESLint..."
-    # Use npx to ensure project-local eslint is preferred if available
-    npx eslint "$dir" --ext .js,.jsx,.ts,.tsx --fix || {
+    (cd "$project_root" && npx eslint "$rel_dir" --ext .js,.jsx,.ts,.tsx --fix) || {
       echo "ESLint found issues in $dir. Please review the above warnings/errors."
     }
   else
@@ -249,9 +245,10 @@ echo "ESLint linting completed."
 echo "Running Prettier for JavaScript/TypeScript files..."
 for dir in "${JS_DIRECTORIES[@]}"; do
   if [ -d "$dir" ]; then
+    project_root=$(dirname "$dir")
+    rel_dir=$(basename "$dir")
     echo "Formatting JavaScript/TypeScript files in $dir with Prettier..."
-    # Use npx to ensure project-local prettier is preferred if available
-    npx prettier --write "$dir/**/*.{js,jsx,ts,tsx}" --ignore-unknown || {
+    (cd "$project_root" && npx prettier --write "${rel_dir}/**/*.{js,jsx,ts,tsx}" --ignore-unknown) || {
       echo "Prettier encountered issues in $dir. Please review the above errors."
     }
   else
@@ -345,14 +342,19 @@ fi
 echo "----------------------------------------"
 echo "Applying common fixes to all file types..."
 
+# Directories to always exclude from the sweep below: dependency trees,
+# virtualenvs, and build output (web-frontend builds into "build/", not
+# "dist/", but both are excluded in case that ever changes).
+COMMON_EXCLUDES=(-not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/dist/*" -not -path "*/build/*" -not -path "*/.next/*" -not -path "*/.expo/*")
+
 # 5.1 Fix trailing whitespace
 echo "Fixing trailing whitespace..."
-find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yaml" -o -name "*.yml" -o -name "*.tf" -o -name "*.tfvars" \) -not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/dist/*" -not -path "*/.next/*" -exec sed -i 's/[ \t]*$//' {} \;
+find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yaml" -o -name "*.yml" -o -name "*.tf" -o -name "*.tfvars" \) "${COMMON_EXCLUDES[@]}" -exec sed -i 's/[ \t]*$//' {} \;
 echo "Fixed trailing whitespace."
 
 # 5.2 Ensure newline at end of file
 echo "Ensuring newline at end of files..."
-find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yaml" -o -name "*.yml" -o -name "*.tf" -o -name "*.tfvars" \) -not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/dist/*" -not -path "*/.next/*" -exec sh -c '[ -n "$(tail -c1 "$1")" ] && echo "" >> "$1"' sh {} \;
+find . -type f \( -name "*.py" -o -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" -o -name "*.yaml" -o -name "*.yml" -o -name "*.tf" -o -name "*.tfvars" \) "${COMMON_EXCLUDES[@]}" -exec sh -c '[ -n "$(tail -c1 "$1")" ] && echo "" >> "$1"' sh {} \;
 echo "Ensured newline at end of files."
 
 echo "----------------------------------------"

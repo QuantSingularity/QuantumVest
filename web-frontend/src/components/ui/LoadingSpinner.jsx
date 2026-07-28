@@ -1,36 +1,35 @@
 import React from "react";
-import { useEffect, useState } from "react";
 import "../../styles/LoadingSpinner.css";
 
 const LoadingSpinner = ({
   size = "medium",
-  color = "primary",
-  text = "Loading...",
+  message,
+  text,
+  fullScreen = false,
+  inline = false,
 }) => {
-  const [dots, setDots] = useState(".");
+  const label = message || text;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => {
-        if (prev.length >= 3) return ".";
-        return `${prev}.`;
-      });
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
+  const content = (
     <div className={`loading-spinner-container ${size}`}>
-      <div className={`spinner ${color}`}></div>
-      {text && (
-        <p className="loading-text">
-          {text}
-          {dots}
-        </p>
-      )}
+      <span className="spinner" />
+      {label && <p className="loading-text">{label}</p>}
     </div>
   );
+
+  if (fullScreen) {
+    return <div className="loading-fullscreen">{content}</div>;
+  }
+
+  if (inline) {
+    return (
+      <span className="loading-inline">
+        <span className="spinner spinner-small" />
+      </span>
+    );
+  }
+
+  return content;
 };
 
 export default LoadingSpinner;

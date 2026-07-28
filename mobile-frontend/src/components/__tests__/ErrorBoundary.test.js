@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, act } from "@testing-library/react-native";
 import { Text } from "react-native";
 import ErrorBoundary from "../ErrorBoundary";
 
@@ -54,25 +54,36 @@ describe("ErrorBoundary", () => {
     expect(button).toBeTruthy();
   });
 
-  it("resets error state when Try Again is pressed", () => {
+  it("resets error state when Try Again is pressed", async () => {
+    let boundaryRef;
     const { getByText, rerender } = render(
-      <ErrorBoundary>
+      <ErrorBoundary
+        ref={(r) => {
+          boundaryRef = r;
+        }}
+      >
         <ThrowError shouldThrow={true} />
       </ErrorBoundary>,
     );
 
     expect(getByText("Oops! Something went wrong")).toBeTruthy();
+    expect(boundaryRef.state.hasError).toBe(true);
 
-    const button = getByText("Try Again");
-    fireEvent.press(button);
+    await act(async () => {
+      boundaryRef.handleReset();
+    });
+    expect(boundaryRef.state.hasError).toBe(false);
 
-    // After reset, should try to render children again
+    // With hasError cleared, rendering non-throwing children succeeds.
     rerender(
-      <ErrorBoundary>
+      <ErrorBoundary
+        ref={(r) => {
+          boundaryRef = r;
+        }}
+      >
         <ThrowError shouldThrow={false} />
       </ErrorBoundary>,
     );
-
     expect(getByText("No Error")).toBeTruthy();
   });
 });

@@ -1,0 +1,285 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.appName }}-backend"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}-backend"
+    version: "{{ .Values.backend.image.tag }}"
+    tier: backend
+    component: api
+    environment: "{{ .Values.environment }}"
+  annotations:
+    deployment.kubernetes.io/revision: "{{ .Values.backend.revision | default 1 }}"
+    quantumvest.com/compliance-level: "financial"
+    quantumvest.com/data-classification: "sensitive"
+spec:
+  replicas: { { .Values.backend.replicas } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: '{{ .Values.backend.deployment.maxSurge | default "25%" }}'
+      maxUnavailable: '{{ .Values.backend.deployment.maxUnavailable | default "25%" }}'
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-backend"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.appName }}-backend"
+        version: "{{ .Values.backend.image.tag }}"
+        tier: backend
+        component: api
+        environment: "{{ .Values.environment }}"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.backend.containerPort }}"
+        prometheus.io/path: "/metrics"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "{{ .Values.appName }}-backend"
+        vault.hashicorp.com/agent-inject-secret-config: "secret/{{ .Values.appName }}/backend"
+    spec:
+      serviceAccountName: "{{ .Values.appName }}-backend"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - "{{ .Values.appName }}-backend"
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-type
+                    operator: In
+                    values:
+                      - application
+      tolerations:
+        - key: "application-workload"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      containers:
+        - name: "{{ .Values.appName }}-backend"
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: "{{ .Values.backend.image.pullPolicy }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: { { .Values.backend.containerPort } }
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "{{ .Values.backend.resources.limits.cpu }}"
+              memory: "{{ .Values.backend.resources.limits.memory }}"
+              ephemeral-storage: '{{ .Values.backend.resources.limits.storage | default "1Gi" }}'
+            requests:
+              cpu: "{{ .Values.backend.resources.requests.cpu }}"
+              memory: "{{ .Values.backend.resources.requests.memory }}"
+              ephemeral-storage: '{{ .Values.backend.resources.requests.storage | default "500Mi" }}'
+          env:
+            - name: FLASK_ENV
+              value: '{{ if eq .Values.environment "dev" }}development{{ else }}production{{ end }}'
+            - name: PORT
+              value: "{{ .Values.backend.containerPort }}"
+            - name: LOG_LEVEL
+              value: '{{ .Values.backend.logLevel | default "info" }}'
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: database-url
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: redis-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: jwt-secret
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: encryption-key
+            - name: API_KEY_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: api-key-hash
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "{{ .Values.appName }}-backend"
+            - name: OTEL_SERVICE_VERSION
+              value: "{{ .Values.backend.image.tag }}"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "environment={{ .Values.environment }},service.namespace={{ .Values.namespace }}"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: var-cache
+              mountPath: /var/cache
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: secrets
+              mountPath: /app/secrets
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds:
+              {
+                {
+                  .Values.backend.probes.liveness.initialDelaySeconds | default 60,
+                },
+              }
+            periodSeconds:
+              { { .Values.backend.probes.liveness.periodSeconds | default 30 } }
+            timeoutSeconds:
+              {
+                { .Values.backend.probes.liveness.timeoutSeconds | default 10 },
+              }
+            failureThreshold:
+              {
+                {
+                  .Values.backend.probes.liveness.failureThreshold | default 3,
+                },
+              }
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds:
+              {
+                {
+                  .Values.backend.probes.readiness.initialDelaySeconds | default 30,
+                },
+              }
+            periodSeconds:
+              {
+                { .Values.backend.probes.readiness.periodSeconds | default 10 },
+              }
+            timeoutSeconds:
+              {
+                { .Values.backend.probes.readiness.timeoutSeconds | default 5 },
+              }
+            failureThreshold:
+              {
+                {
+                  .Values.backend.probes.readiness.failureThreshold | default 3,
+                },
+              }
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+              scheme: HTTP
+            initialDelaySeconds:
+              {
+                {
+                  .Values.backend.probes.startup.initialDelaySeconds | default 10,
+                },
+              }
+            periodSeconds:
+              { { .Values.backend.probes.startup.periodSeconds | default 10 } }
+            timeoutSeconds:
+              { { .Values.backend.probes.startup.timeoutSeconds | default 5 } }
+            failureThreshold:
+              {
+                {
+                  .Values.backend.probes.startup.failureThreshold | default 30,
+                },
+              }
+            successThreshold: 1
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep 15
+        - name: vault-agent
+          image: 'hashicorp/vault:{{ .Values.vault.image.tag | default "1.15.2" }}'
+          command:
+            - vault
+            - agent
+            - -config=/vault/config/agent.hcl
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: vault-config
+              mountPath: /vault/config
+            - name: vault-secrets
+              mountPath: /vault/secrets
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: var-cache
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: config
+          configMap:
+            name: "{{ .Values.appName }}-backend-config"
+            defaultMode: 0444
+        - name: secrets
+          secret:
+            secretName: "{{ .Values.appName }}-secrets"
+            defaultMode: 0400
+        - name: vault-config
+          configMap:
+            name: "{{ .Values.appName }}-vault-config"
+        - name: vault-secrets
+          emptyDir:
+            medium: Memory
+            sizeLimit: 10Mi
+      imagePullSecrets:
+        - name: "{{ .Values.imagePullSecrets }}"
+      terminationGracePeriodSeconds:
+        { { .Values.backend.terminationGracePeriodSeconds | default 30 } }
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler

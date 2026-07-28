@@ -23,16 +23,30 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# Function to check if an apt package is installed. Some required packages
+# (e.g. build-essential, postgresql) don't provide a command of the same
+# name, so `command_exists` alone would always report them as missing and
+# needlessly try to reinstall them on every run.
+apt_package_installed() {
+  dpkg -s "$1" >/dev/null 2>&1
+}
+
 # Function to check and install system dependencies
 check_system_dependencies() {
   echo -e "\n${BLUE}Checking system dependencies...${NC}"
 
+  if ! command_exists apt-get; then
+    echo -e "${YELLOW}apt-get not found (not a Debian/Ubuntu system). Skipping system package checks.${NC}"
+    echo -e "${YELLOW}Please ensure curl, git, build tools, PostgreSQL, Docker, and Docker Compose are installed manually.${NC}"
+    return
+  fi
+
   # List of required system packages
-  local required_packages=("curl" "git" "build-essential" "postgresql" "redis-server" "docker" "docker-compose")
+  local required_packages=("curl" "git" "build-essential" "postgresql" "redis-server" "docker.io" "docker-compose")
   local missing_packages=()
 
   for package in "${required_packages[@]}"; do
-    if ! command_exists "$package"; then
+    if ! apt_package_installed "$package"; then
       missing_packages+=("$package")
     fi
   done
@@ -48,6 +62,13 @@ check_system_dependencies() {
     sudo apt-get install -y "${missing_packages[@]}"
   else
     echo -e "${GREEN}All system dependencies are installed.${NC}"
+  fi
+
+  # Docker Compose may be provided as the "docker compose" plugin instead of
+  # (or in addition to) the standalone docker-compose binary.
+  if ! command_exists docker-compose && ! docker compose version >/dev/null 2>&1; then
+    echo -e "${YELLOW}Neither 'docker-compose' nor the 'docker compose' plugin was found on PATH.${NC}"
+    echo -e "${YELLOW}Docker-based setup/deploy steps will not work until one of them is installed.${NC}"
   fi
 }
 
@@ -70,18 +91,19 @@ setup_python_environment() {
 
   # Activate virtual environment
   echo -e "${BLUE}Activating virtual environment...${NC}"
+  # shellcheck disable=SC1091
   source venv/bin/activate
 
   # Install Python dependencies
   echo -e "${BLUE}Installing Python dependencies...${NC}"
   pip install --upgrade pip
 
-  # Check if requirements.txt exists in backend directory
+  # Check if requirements.txt exists in the backend directory
   if [ -f "code/backend/requirements.txt" ]; then
     pip install -r code/backend/requirements.txt
   else
     echo -e "${YELLOW}Warning: code/backend/requirements.txt not found. Installing common dependencies...${NC}"
-    pip install fastapi uvicorn pandas numpy scikit-learn tensorflow pytorch-lightning flask celery redis
+    pip install flask flask-sqlalchemy flask-jwt-extended pandas numpy scikit-learn gunicorn pytest
   fi
 
   # Install AI model dependencies
@@ -105,6 +127,7 @@ setup_node_environment() {
 
     # Load NVM
     export NVM_DIR="$HOME/.nvm"
+    # shellcheck disable=SC1091
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
     # Install Node.js LTS
@@ -112,28 +135,23 @@ setup_node_environment() {
     nvm use --lts
   fi
 
-  # Install frontend dependencies
-  if [ -d "code/frontend" ]; then
-    echo -e "${BLUE}Installing frontend dependencies...${NC}"
-    cd code/frontend
-    npm install
-    cd ../..
+  # Install web frontend dependencies (the real directory is "web-frontend"
+  # at the project root, not "code/frontend")
+  if [ -d "web-frontend" ]; then
+    echo -e "${BLUE}Installing web frontend dependencies...${NC}"
+    (cd web-frontend && npm install)
   fi
 
   # Install blockchain dependencies
   if [ -d "code/blockchain" ]; then
     echo -e "${BLUE}Installing blockchain dependencies...${NC}"
-    cd code/blockchain
-    npm install
-    cd ../..
+    (cd code/blockchain && npm install)
   fi
 
   # Install mobile frontend dependencies
   if [ -d "mobile-frontend" ]; then
     echo -e "${BLUE}Installing mobile frontend dependencies...${NC}"
-    cd mobile-frontend
-    npm install
-    cd ..
+    (cd mobile-frontend && npm install)
   fi
 
   echo -e "${GREEN}Node.js environment setup complete.${NC}"
@@ -143,44 +161,72 @@ setup_node_environment() {
 setup_env_variables() {
   echo -e "\n${BLUE}Setting up environment variables...${NC}"
 
-  # Check if .env file exists
-  if [ -f ".env" ]; then
-    echo -e "${GREEN}.env file already exists.${NC}"
-  else
-    echo -e "${YELLOW}.env file not found. Creating from template...${NC}"
-
-    # Create .env file with default values
-    cat > .env << EOL
-DB_URI="postgresql://user:pass@localhost:5432/investment_platform"
-BSC_NODE_URL="wss://bsc-ws-node.nariox.org"
-MODEL_DIR="./ai_models"
-ALPHA_VANTAGE_KEY="YOUR_API_KEY"
-EOL
-
-    echo -e "${GREEN}.env file created. Please update with your actual credentials.${NC}"
-  fi
-
-  # Create .env files for frontend and backend if they don't exist
-  if [ ! -f "code/frontend/.env" ] && [ -d "code/frontend" ]; then
-    echo -e "${YELLOW}Frontend .env file not found. Creating...${NC}"
-    cat > code/frontend/.env << EOL
-REACT_APP_API_URL=http://localhost:8000
-REACT_APP_WS_URL=ws://localhost:8000/ws
-REACT_APP_BLOCKCHAIN_ENABLED=false
-EOL
-    echo -e "${GREEN}Frontend .env file created.${NC}"
-  fi
-
-  if [ ! -f "code/backend/.env" ] && [ -d "code/backend" ]; then
-    echo -e "${YELLOW}Backend .env file not found. Creating...${NC}"
-    cat > code/backend/.env << EOL
-DATABASE_URL=postgresql://user:pass@localhost:5432/investment_platform
+  # --- Backend .env -------------------------------------------------------
+  # Variable names below must match app/config.py exactly:
+  #   SECRET_KEY, JWT_SECRET_KEY, DATABASE_URL, DEV_DATABASE_URL,
+  #   ALPHA_VANTAGE_API_KEY, COINAPI_KEY, REDIS_URL, CORS_ORIGINS,
+  #   MAX_LOGIN_ATTEMPTS, ACCOUNT_LOCKOUT_MINUTES, FLASK_ENV
+  if [ -d "code/backend" ]; then
+    if [ -f "code/backend/.env" ]; then
+      echo -e "${GREEN}code/backend/.env already exists.${NC}"
+    else
+      echo -e "${YELLOW}code/backend/.env not found. Creating...${NC}"
+      if [ -f "code/backend/.env.example" ]; then
+        cp code/backend/.env.example code/backend/.env
+        # The example ships with a sqlite default; point it at the local
+        # Postgres instance this script provisions in setup_database().
+        {
+          echo ""
+          echo "# Added by env_setup.sh — local Postgres instance"
+          echo "DEV_DATABASE_URL=postgresql://quantumvest:quantumvest@localhost:5432/quantumvest_dev"
+        } >> code/backend/.env
+      else
+        cat > code/backend/.env << 'EOL'
+FLASK_ENV=development
+SECRET_KEY=dev-secret-key-change-in-production
+JWT_SECRET_KEY=dev-jwt-secret-change-in-production
+DATABASE_URL=postgresql://quantumvest:quantumvest@localhost:5432/quantumvest_dev
+DEV_DATABASE_URL=postgresql://quantumvest:quantumvest@localhost:5432/quantumvest_dev
 REDIS_URL=redis://localhost:6379/0
-JWT_SECRET=your_jwt_secret_key
-ALPHA_VANTAGE_API_KEY=your_alpha_vantage_api_key
-ENVIRONMENT=development
+CORS_ORIGINS=http://localhost:3000
+ALPHA_VANTAGE_API_KEY=
+COINAPI_KEY=
+MAX_LOGIN_ATTEMPTS=5
+ACCOUNT_LOCKOUT_MINUTES=30
 EOL
-    echo -e "${GREEN}Backend .env file created. Please update with your actual credentials.${NC}"
+      fi
+      echo -e "${GREEN}code/backend/.env created. Please update it with real credentials before deploying.${NC}"
+    fi
+  fi
+
+  # --- Web frontend .env ---------------------------------------------------
+  # web-frontend is built with Vite, which only exposes variables prefixed
+  # with VITE_ to client code (import.meta.env). A previous version of this
+  # script wrote REACT_APP_*, which Vite silently ignores.
+  if [ -d "web-frontend" ]; then
+    if [ -f "web-frontend/.env" ]; then
+      echo -e "${GREEN}web-frontend/.env already exists.${NC}"
+    else
+      echo -e "${YELLOW}web-frontend/.env not found. Creating...${NC}"
+      cat > web-frontend/.env << 'EOL'
+VITE_API_BASE_URL=http://localhost:5000/api/v1
+EOL
+      echo -e "${GREEN}web-frontend/.env created.${NC}"
+    fi
+  fi
+
+  # --- Mobile frontend .env -------------------------------------------------
+  if [ -d "mobile-frontend" ]; then
+    if [ -f "mobile-frontend/.env" ]; then
+      echo -e "${GREEN}mobile-frontend/.env already exists.${NC}"
+    else
+      echo -e "${YELLOW}mobile-frontend/.env not found. Creating...${NC}"
+      cat > mobile-frontend/.env << 'EOL'
+API_BASE_URL=http://localhost:5000/api/v1
+APP_ENV=development
+EOL
+      echo -e "${GREEN}mobile-frontend/.env created.${NC}"
+    fi
   fi
 }
 
@@ -189,35 +235,45 @@ setup_database() {
   echo -e "\n${BLUE}Setting up database...${NC}"
 
   # Check if PostgreSQL service is running
-  if systemctl is-active --quiet postgresql; then
+  if command_exists systemctl && systemctl is-active --quiet postgresql 2>/dev/null; then
     echo -e "${GREEN}PostgreSQL is running.${NC}"
-  else
+  elif command_exists systemctl; then
     echo -e "${YELLOW}PostgreSQL is not running. Starting service...${NC}"
     sudo systemctl start postgresql
+  else
+    echo -e "${YELLOW}systemctl not available; please ensure PostgreSQL is running manually.${NC}"
   fi
 
-  # Create database and user if they don't exist
+  # Create database and user if they don't exist. The source of truth for
+  # the connection string is code/backend/.env's DATABASE_URL — NOT a
+  # top-level .env, which nothing in the application actually reads.
   echo -e "${BLUE}Creating database and user if they don't exist...${NC}"
 
-  # Extract database name from DB_URI in .env file
-  if [ -f ".env" ]; then
-    DB_NAME=$(grep -oP 'DB_URI=.*\/\K[^"]*' .env)
+  if [ -f "code/backend/.env" ]; then
+    DB_URL=$(grep -m1 '^DATABASE_URL=' code/backend/.env | cut -d= -f2-)
 
-    if [ -n "$DB_NAME" ]; then
-      # Check if database exists
-      if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DB_NAME"; then
-        echo -e "${GREEN}Database $DB_NAME already exists.${NC}"
+    if [ -n "$DB_URL" ] && [[ "$DB_URL" == postgresql://* ]]; then
+      DB_USER=$(echo "$DB_URL" | sed -E 's#postgresql://([^:]+):.*#\1#')
+      DB_NAME=$(echo "$DB_URL" | sed -E 's#.*/([^/?]+)(\?.*)?$#\1#')
+
+      if command_exists psql && command_exists createdb; then
+        if sudo -u postgres psql -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw "$DB_NAME"; then
+          echo -e "${GREEN}Database $DB_NAME already exists.${NC}"
+        else
+          echo -e "${YELLOW}Creating role $DB_USER and database $DB_NAME...${NC}"
+          sudo -u postgres psql -c "DO \$\$ BEGIN CREATE ROLE $DB_USER LOGIN PASSWORD '$DB_USER'; EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;" || true
+          sudo -u postgres createdb -O "$DB_USER" "$DB_NAME"
+          echo -e "${GREEN}Database $DB_NAME created.${NC}"
+        fi
       else
-        echo -e "${YELLOW}Creating database $DB_NAME...${NC}"
-        sudo -u postgres createdb "$DB_NAME"
-        echo -e "${GREEN}Database $DB_NAME created.${NC}"
+        echo -e "${YELLOW}psql/createdb not found. Skipping automatic database creation.${NC}"
+        echo -e "${YELLOW}Please create database '$DB_NAME' manually.${NC}"
       fi
     else
-      echo -e "${YELLOW}Could not extract database name from .env file.${NC}"
-      echo -e "${YELLOW}Please create the database manually.${NC}"
+      echo -e "${YELLOW}DATABASE_URL in code/backend/.env is not a postgresql:// URL (or is unset). Skipping.${NC}"
     fi
   else
-    echo -e "${YELLOW}.env file not found. Skipping database creation.${NC}"
+    echo -e "${YELLOW}code/backend/.env not found. Skipping database creation.${NC}"
   fi
 }
 
@@ -225,54 +281,40 @@ setup_database() {
 setup_docker() {
   echo -e "\n${BLUE}Setting up Docker containers...${NC}"
 
-  # Check if Docker is running
-  if systemctl is-active --quiet docker; then
+  if command_exists systemctl && systemctl is-active --quiet docker 2>/dev/null; then
     echo -e "${GREEN}Docker is running.${NC}"
-  else
+  elif command_exists systemctl; then
     echo -e "${YELLOW}Docker is not running. Starting service...${NC}"
     sudo systemctl start docker
   fi
 
-  # Check if docker-compose.yml exists
-  if [ -f "docker-compose.yml" ]; then
-    echo -e "${BLUE}Starting Docker containers...${NC}"
-    docker-compose up -d
-  elif [ -f "infrastructure/docker-compose.yml" ]; then
+  # The project's real compose file lives in infrastructure/. It requires
+  # several secrets (MYSQL_ROOT_PASSWORD, DB_PASSWORD, REDIS_PASSWORD,
+  # JWT_SECRET, ENCRYPTION_KEY, GRAFANA_PASSWORD) with no defaults, so
+  # `docker compose up` fails immediately without an infrastructure/.env.
+  if [ -f "infrastructure/docker-compose.yml" ]; then
+    if [ ! -f "infrastructure/.env" ] && [ -f "infrastructure/.env.example" ]; then
+      echo -e "${YELLOW}infrastructure/.env not found. Generating one with random secrets...${NC}"
+      cp infrastructure/.env.example infrastructure/.env
+      if command_exists openssl; then
+        for var in DB_PASSWORD MYSQL_ROOT_PASSWORD JWT_SECRET ENCRYPTION_KEY REDIS_PASSWORD GRAFANA_PASSWORD; do
+          secret=$(openssl rand -hex 24)
+          # macOS/BSD sed needs -i '', GNU sed needs -i — this project targets Linux, so plain -i is used.
+          sed -i "s#^${var}=.*#${var}=${secret}#" infrastructure/.env
+        done
+        echo -e "${GREEN}infrastructure/.env generated with random secrets.${NC}"
+      else
+        echo -e "${YELLOW}openssl not found. Please fill in infrastructure/.env manually before continuing.${NC}"
+      fi
+    fi
+
     echo -e "${BLUE}Starting Docker containers from infrastructure directory...${NC}"
-    cd infrastructure
-    docker-compose up -d
-    cd ..
+    (cd infrastructure && (docker compose up -d 2>/dev/null || docker-compose up -d))
+  elif [ -f "docker-compose.yml" ]; then
+    echo -e "${BLUE}Starting Docker containers from the current directory...${NC}"
+    docker compose up -d 2>/dev/null || docker-compose up -d
   else
-    echo -e "${YELLOW}docker-compose.yml not found. Creating a basic one...${NC}"
-
-    # Create a basic docker-compose.yml file
-    cat > docker-compose.yml << EOL
-version: '3'
-
-services:
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: investment_platform
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:6
-    ports:
-      - "6379:6379"
-
-volumes:
-  postgres_data:
-EOL
-
-    echo -e "${GREEN}Basic docker-compose.yml created.${NC}"
-    echo -e "${BLUE}Starting Docker containers...${NC}"
-    docker-compose up -d
+    echo -e "${YELLOW}No docker-compose.yml found (checked ./ and infrastructure/). Skipping Docker setup.${NC}"
   fi
 }
 
@@ -300,7 +342,7 @@ main() {
 
   echo -e "\n${GREEN}QuantumVest environment setup complete!${NC}"
   echo -e "${BLUE}You can now start the application using:${NC}"
-  echo -e "  ./run_quantumvest.sh"
+  echo -e "  ./scripts/run_quantumvest.sh"
 }
 
 # Run the main function

@@ -23,47 +23,56 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# Run docker-compose, preferring the v2 "docker compose" plugin and falling
+# back to the standalone v1 binary if that's what's installed.
+compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
+  fi
+}
+
 # Function to deploy Docker containers
 deploy_docker() {
   echo -e "\n${BLUE}Deploying Docker containers...${NC}"
 
-  # Check if Docker is installed
   if ! command_exists docker; then
     echo -e "${RED}Error: Docker is not installed.${NC}"
     echo -e "${YELLOW}Please install Docker before proceeding.${NC}"
     exit 1
   fi
 
-  # Check if Docker is running
   if ! docker info > /dev/null 2>&1; then
     echo -e "${RED}Error: Docker daemon is not running.${NC}"
     echo -e "${YELLOW}Please start Docker before proceeding.${NC}"
     exit 1
   fi
 
-  # Check if docker-compose is installed
-  if ! command_exists docker-compose; then
-    echo -e "${RED}Error: docker-compose is not installed.${NC}"
-    echo -e "${YELLOW}Please install docker-compose before proceeding.${NC}"
+  if ! command_exists docker-compose && ! docker compose version >/dev/null 2>&1; then
+    echo -e "${RED}Error: Neither docker-compose nor the docker compose plugin is installed.${NC}"
+    echo -e "${YELLOW}Please install one of them before proceeding.${NC}"
     exit 1
   fi
 
-  # Check if docker-compose.yml exists
   if [ -f "docker-compose.yml" ]; then
     echo -e "${BLUE}Using docker-compose.yml in the current directory...${NC}"
-    docker-compose down
-    docker-compose build
-    docker-compose up -d
+    compose down
+    compose build
+    compose up -d
   elif [ -f "infrastructure/docker-compose.yml" ]; then
     echo -e "${BLUE}Using docker-compose.yml in the infrastructure directory...${NC}"
-    cd infrastructure
-    docker-compose down
-    docker-compose build
-    docker-compose up -d
-    cd ..
+    if [ ! -f "infrastructure/.env" ]; then
+      echo -e "${RED}Error: infrastructure/.env not found.${NC}"
+      echo -e "${YELLOW}The compose file requires secrets (DB_PASSWORD, MYSQL_ROOT_PASSWORD, JWT_SECRET,${NC}"
+      echo -e "${YELLOW}ENCRYPTION_KEY, REDIS_PASSWORD, GRAFANA_PASSWORD) with no defaults. Run${NC}"
+      echo -e "${YELLOW}./scripts/env_setup.sh first, or copy infrastructure/.env.example to${NC}"
+      echo -e "${YELLOW}infrastructure/.env and fill in real values.${NC}"
+      exit 1
+    fi
+    (cd infrastructure && compose down && compose build && compose up -d)
   else
-    echo -e "${RED}Error: docker-compose.yml not found.${NC}"
-    echo -e "${YELLOW}Please create a docker-compose.yml file before proceeding.${NC}"
+    echo -e "${RED}Error: docker-compose.yml not found (checked ./ and infrastructure/).${NC}"
     exit 1
   fi
 
@@ -74,34 +83,26 @@ deploy_docker() {
 initialize_database() {
   echo -e "\n${BLUE}Initializing database...${NC}"
 
-  # Check if backend directory exists
   if [ ! -d "code/backend" ]; then
     echo -e "${RED}Error: Backend directory not found.${NC}"
     echo -e "${YELLOW}Please ensure the backend directory exists before proceeding.${NC}"
     exit 1
   fi
 
-  # Check if database migration scripts exist
   if [ -f "code/backend/migrations/run_migrations.py" ]; then
     echo -e "${BLUE}Running database migrations...${NC}"
-    cd code/backend
-    python migrations/run_migrations.py
-    cd ../..
+    (cd code/backend && python3 migrations/run_migrations.py)
   elif [ -f "code/backend/alembic.ini" ]; then
     echo -e "${BLUE}Running Alembic migrations...${NC}"
-    cd code/backend
-
-    # Check if alembic is installed
     if ! command_exists alembic; then
       echo -e "${YELLOW}Alembic not found. Installing...${NC}"
       pip install alembic
     fi
-
-    alembic upgrade head
-    cd ../..
+    (cd code/backend && alembic upgrade head)
   else
-    echo -e "${YELLOW}No migration scripts found. Skipping database initialization.${NC}"
-    echo -e "${YELLOW}Please initialize the database manually if needed.${NC}"
+    # This backend calls db.create_all() on startup (see app/__init__.py),
+    # so there's no separate migration step to run.
+    echo -e "${YELLOW}No migration scripts found. The backend creates its tables automatically on startup.${NC}"
   fi
 
   echo -e "${GREEN}Database initialization completed.${NC}"
@@ -111,44 +112,37 @@ initialize_database() {
 deploy_backend() {
   echo -e "\n${BLUE}Deploying backend services...${NC}"
 
-  # Check if backend directory exists
   if [ ! -d "code/backend" ]; then
     echo -e "${RED}Error: Backend directory not found.${NC}"
     echo -e "${YELLOW}Please ensure the backend directory exists before proceeding.${NC}"
     exit 1
   fi
 
-  # Check if we're deploying in Docker or directly
   if [ "$DEPLOY_MODE" = "docker" ]; then
     echo -e "${BLUE}Backend services are deployed via Docker.${NC}"
     echo -e "${BLUE}No additional action needed.${NC}"
   else
     echo -e "${BLUE}Deploying backend services directly...${NC}"
 
-    # Check if Python virtual environment exists
     if [ ! -d "venv" ]; then
       echo -e "${YELLOW}Python virtual environment not found. Creating...${NC}"
       python3 -m venv venv
     fi
 
-    # Activate virtual environment
+    # shellcheck disable=SC1091
     source venv/bin/activate
 
-    # Install backend dependencies
-    cd code/backend
-    pip install -r requirements.txt
+    pip install -r code/backend/requirements.txt
 
-    # Check if gunicorn is installed
     if ! command_exists gunicorn; then
       echo -e "${YELLOW}Gunicorn not found. Installing...${NC}"
       pip install gunicorn
     fi
 
-    # Start backend services
+    # The Flask app factory lives in wsgi.py (app = create_app(...)) — there
+    # is no main.py in this backend.
     echo -e "${BLUE}Starting backend services with Gunicorn...${NC}"
-    gunicorn main:app --workers 4 --bind 0.0.0.0:8000 --daemon
-
-    cd ../..
+    (cd code/backend && FLASK_ENV=production gunicorn wsgi:app --workers 4 --bind 0.0.0.0:8000 --daemon)
 
     echo -e "${GREEN}Backend services deployed successfully.${NC}"
   fi
@@ -158,51 +152,44 @@ deploy_backend() {
 deploy_frontend() {
   echo -e "\n${BLUE}Deploying frontend...${NC}"
 
-  # Check if frontend directory exists
-  if [ ! -d "code/frontend" ]; then
-    echo -e "${RED}Error: Frontend directory not found.${NC}"
-    echo -e "${YELLOW}Please ensure the frontend directory exists before proceeding.${NC}"
+  # The real directory is "web-frontend" at the project root.
+  if [ ! -d "web-frontend" ]; then
+    echo -e "${RED}Error: web-frontend directory not found.${NC}"
+    echo -e "${YELLOW}Please ensure the web-frontend directory exists before proceeding.${NC}"
     exit 1
   fi
 
-  # Check if we're deploying in Docker or directly
   if [ "$DEPLOY_MODE" = "docker" ]; then
     echo -e "${BLUE}Frontend is deployed via Docker.${NC}"
     echo -e "${BLUE}No additional action needed.${NC}"
   else
     echo -e "${BLUE}Building and deploying frontend directly...${NC}"
 
-    # Check if Node.js is installed
     if ! command_exists node; then
       echo -e "${RED}Error: Node.js is not installed.${NC}"
       echo -e "${YELLOW}Please install Node.js before proceeding.${NC}"
       exit 1
     fi
 
-    # Build frontend
-    cd code/frontend
-    npm install
-    npm run build
+    (cd web-frontend && npm install && npm run build)
 
-    # Check if build directory exists
-    if [ ! -d "build" ]; then
-      echo -e "${RED}Error: Frontend build failed.${NC}"
+    # web-frontend is a Vite app; its build output directory is "build"
+    # (see vite.config.js: build.outDir = "build").
+    if [ ! -d "web-frontend/build" ]; then
+      echo -e "${RED}Error: Frontend build failed (web-frontend/build not found).${NC}"
       exit 1
     fi
 
-    # Check if nginx is installed
     if ! command_exists nginx; then
       echo -e "${YELLOW}Nginx not found. Installing...${NC}"
       sudo apt-get update
       sudo apt-get install -y nginx
     fi
 
-    # Deploy to nginx
     echo -e "${BLUE}Deploying frontend to Nginx...${NC}"
     sudo mkdir -p /var/www/quantumvest
-    sudo cp -r build/* /var/www/quantumvest/
+    sudo cp -r web-frontend/build/* /var/www/quantumvest/
 
-    # Create nginx configuration
     echo -e "${BLUE}Creating Nginx configuration...${NC}"
     sudo tee /etc/nginx/sites-available/quantumvest > /dev/null << EOL
 server {
@@ -224,12 +211,9 @@ server {
 }
 EOL
 
-    # Enable site and restart nginx
     sudo ln -sf /etc/nginx/sites-available/quantumvest /etc/nginx/sites-enabled/
     sudo nginx -t
     sudo systemctl restart nginx
-
-    cd ../..
 
     echo -e "${GREEN}Frontend deployed successfully.${NC}"
   fi
@@ -239,63 +223,57 @@ EOL
 deploy_mobile_frontend() {
   echo -e "\n${BLUE}Deploying mobile frontend...${NC}"
 
-  # Check if mobile-frontend directory exists
   if [ ! -d "mobile-frontend" ]; then
     echo -e "${YELLOW}Mobile frontend directory not found. Skipping.${NC}"
     return
   fi
 
   echo -e "${BLUE}Building mobile frontend...${NC}"
-  cd mobile-frontend
-  npm install
+  (cd mobile-frontend && npm install)
 
-  # Check if Expo is being used
-  if grep -q "expo" package.json; then
-    echo -e "${BLUE}Building Expo app...${NC}"
+  if grep -q "\"expo\"" mobile-frontend/package.json; then
+    echo -e "${BLUE}This is an Expo app.${NC}"
 
-    # Check if expo-cli is installed
-    if ! command_exists expo; then
-      echo -e "${YELLOW}Expo CLI not found. Installing...${NC}"
-      npm install -g expo-cli
+    # `expo build:android` / `expo build:ios` used the classic Expo build
+    # service, which was shut down; builds now go through EAS.
+    if ! command_exists eas; then
+      echo -e "${YELLOW}eas-cli not found. Installing...${NC}"
+      npm install -g eas-cli
     fi
 
-    # Build for Android
     if [ "$BUILD_ANDROID" = "true" ]; then
-      echo -e "${BLUE}Building for Android...${NC}"
-      expo build:android -t apk
+      echo -e "${BLUE}Building for Android via EAS...${NC}"
+      (cd mobile-frontend && eas build --platform android --non-interactive)
     fi
 
-    # Build for iOS
     if [ "$BUILD_IOS" = "true" ]; then
-      echo -e "${BLUE}Building for iOS...${NC}"
-      expo build:ios -t archive
+      echo -e "${BLUE}Building for iOS via EAS...${NC}"
+      (cd mobile-frontend && eas build --platform ios --non-interactive)
+    fi
+
+    if [ "$BUILD_ANDROID" != "true" ] && [ "$BUILD_IOS" != "true" ]; then
+      echo -e "${YELLOW}Neither --android nor --ios was passed. Nothing to build.${NC}"
+      echo -e "${YELLOW}(EAS builds also require an Expo account and 'eas login'.)${NC}"
     fi
   else
-    echo -e "${BLUE}Building React Native app...${NC}"
+    echo -e "${BLUE}Building bare React Native app...${NC}"
 
-    # Check if React Native CLI is installed
-    if ! command_exists react-native; then
-      echo -e "${YELLOW}React Native CLI not found. Installing...${NC}"
-      npm install -g react-native-cli
+    if ! command_exists npx; then
+      echo -e "${RED}Error: npx (bundled with npm) is required to run the React Native CLI.${NC}"
+      exit 1
     fi
 
-    # Build for Android
     if [ "$BUILD_ANDROID" = "true" ]; then
       echo -e "${BLUE}Building for Android...${NC}"
-      cd android
-      ./gradlew assembleRelease
-      cd ..
+      (cd mobile-frontend/android && ./gradlew assembleRelease)
     fi
 
-    # Note: iOS builds require macOS
     if [ "$BUILD_IOS" = "true" ]; then
       echo -e "${YELLOW}iOS builds require macOS. Skipping.${NC}"
     fi
   fi
 
-  cd ..
-
-  echo -e "${GREEN}Mobile frontend build completed.${NC}"
+  echo -e "${GREEN}Mobile frontend build step completed.${NC}"
   echo -e "${YELLOW}Note: You need to manually upload the built app to app stores.${NC}"
 }
 
@@ -310,7 +288,7 @@ show_help() {
   echo -e "  ${GREEN}-s, --skip-database${NC}       Skip database initialization"
   echo -e "  ${GREEN}-f, --skip-frontend${NC}       Skip frontend deployment"
   echo -e "  ${GREEN}-b, --skip-backend${NC}        Skip backend deployment"
-  echo -e "  ${GREEN}-m, --skip-mobile${NC}         Skip mobile frontend deployment"
+  echo -e "  ${GREEN}-M, --skip-mobile${NC}         Skip mobile frontend deployment"
 }
 
 # Main function
@@ -325,6 +303,11 @@ main() {
   SKIP_MOBILE="false"
 
   # Parse command line arguments
+  #
+  # NOTE: -m is used for --mode (matching its documented meaning). A
+  # previous version of this script also mapped -m to --skip-mobile, which
+  # meant -m always resolved to --mode and --skip-mobile's short form could
+  # never be reached. --skip-mobile now uses -M instead.
   while [ $# -gt 0 ]; do
     case "$1" in
       -h|--help)
@@ -350,7 +333,7 @@ main() {
       -b|--skip-backend)
         SKIP_BACKEND="true"
         ;;
-      -m|--skip-mobile)
+      -M|--skip-mobile)
         SKIP_MOBILE="true"
         ;;
       *)
@@ -362,9 +345,13 @@ main() {
     shift
   done
 
+  if [ "$DEPLOY_MODE" != "docker" ] && [ "$DEPLOY_MODE" != "direct" ]; then
+    echo -e "${RED}Error: Invalid deployment mode '$DEPLOY_MODE'. Must be 'docker' or 'direct'.${NC}"
+    exit 1
+  fi
+
   # Get the project directory
   PROJECT_DIR=$(pwd)
-
   echo -e "${BLUE}Project directory: $PROJECT_DIR${NC}"
 
   # Check if we're in the QuantumVest directory
@@ -374,27 +361,22 @@ main() {
     exit 1
   fi
 
-  # Deploy Docker containers if in Docker mode
   if [ "$DEPLOY_MODE" = "docker" ]; then
     deploy_docker
   fi
 
-  # Initialize database if not skipped
   if [ "$SKIP_DATABASE" = "false" ]; then
     initialize_database
   fi
 
-  # Deploy backend if not skipped
   if [ "$SKIP_BACKEND" = "false" ]; then
     deploy_backend
   fi
 
-  # Deploy frontend if not skipped
   if [ "$SKIP_FRONTEND" = "false" ]; then
     deploy_frontend
   fi
 
-  # Deploy mobile frontend if not skipped
   if [ "$SKIP_MOBILE" = "false" ]; then
     deploy_mobile_frontend
   fi
@@ -402,14 +384,12 @@ main() {
   echo -e "\n${GREEN}QuantumVest deployment completed successfully!${NC}"
 
   # Print access information
+  echo -e "\n${BLUE}Access Information:${NC}"
+  echo -e "${GREEN}Frontend:${NC} http://localhost:3000"
   if [ "$DEPLOY_MODE" = "docker" ]; then
-    echo -e "\n${BLUE}Access Information:${NC}"
-    echo -e "${GREEN}Frontend:${NC} http://localhost:3000"
-    echo -e "${GREEN}Backend API:${NC} http://localhost:8000"
+    echo -e "${GREEN}Backend API:${NC} http://localhost:8080/api/v1"
   else
-    echo -e "\n${BLUE}Access Information:${NC}"
-    echo -e "${GREEN}Frontend:${NC} http://localhost"
-    echo -e "${GREEN}Backend API:${NC} http://localhost:8000"
+    echo -e "${GREEN}Backend API:${NC} http://localhost:8000/api/v1"
   fi
 }
 

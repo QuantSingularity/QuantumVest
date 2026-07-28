@@ -86,6 +86,10 @@ database:
   servicePort: 3306
   name: quantumvestdb
   user: appuser
+  # Secrets must be provided via external-secrets or Vault — never set here in plain text
+  url: ""
+  rootPassword: ""
+  password: ""
   storageClass: standard
   storage: 20Gi
   resources:
@@ -97,7 +101,14 @@ database:
       memory: 1Gi
 
 redis:
-  replicas: 2
+  # No Redis Cluster/Sentinel configured — replicas > 1 would create
+  # independent, uncoordinated instances rather than a real cache cluster.
+  replicas: 1
+  # Secrets must be provided via external-secrets or Vault — never set here in plain text
+  url: ""
+  # redis-server's --maxmemory needs its own unit suffixes (mb/gb), not
+  # Kubernetes' Mi/Gi — keep this roughly in line with resources.limits.memory below.
+  maxmemory: "800mb"
   image:
     repository: redis
     tag: "7.2-alpine"
@@ -128,3 +139,14 @@ vault:
 
 logLevel: info
 imagePullSecrets: regcred
+
+# Referenced by templates/resource-quota.yaml — must exist as at least an
+# empty "hard" map, or Helm errors on the nil-chain before the `| default`
+# fallbacks in that template ever get a chance to apply.
+resourceQuota:
+  hard:
+    requests_cpu: "20"
+    requests_memory: "40Gi"
+    limits_cpu: "40"
+    limits_memory: "80Gi"
+    persistentvolumeclaims: "20"

@@ -1,0 +1,42 @@
+.portfolio-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.portfolio-card-desc {
+  font-size: 0.85rem;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.portfolio-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  margin-top: 0.3rem;
+}
+
+.portfolio-card-footer {
+  font-size: 0.85rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.portfolio-delete-btn {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  opacity: 0;
+  transition: var(--transition-fast);
+  color: var(--danger);
+}
+
+.portfolio-card:hover .portfolio-delete-btn {
+  opacity: 1;
+}

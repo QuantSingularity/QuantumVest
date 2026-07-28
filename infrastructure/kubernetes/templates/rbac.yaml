@@ -1,0 +1,243 @@
+# RBAC Configuration for QuantumVest Services
+---
+# Service Account for Backend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "{{ .Values.appName }}-backend"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}"
+    component: backend
+  annotations:
+    description: "Service account for QuantumVest backend service"
+
+---
+# Service Account for Frontend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "{{ .Values.appName }}-frontend"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}"
+    component: frontend
+
+---
+# Service Account for Analytics
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "{{ .Values.appName }}-analytics"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}"
+    component: analytics
+
+---
+# Role for Backend Service
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: "{{ .Values.appName }}-backend-role"
+  namespace: "{{ .Values.namespace }}"
+rules:
+  # Allow reading ConfigMaps
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading Secrets (limited)
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames:
+      - "{{ .Values.appName }}-secrets"
+  # Allow pod information for health checks
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+# RoleBinding for Backend
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: "{{ .Values.appName }}-backend-rolebinding"
+  namespace: "{{ .Values.namespace }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: "{{ .Values.appName }}-backend-role"
+subjects:
+  - kind: ServiceAccount
+    name: "{{ .Values.appName }}-backend"
+    namespace: "{{ .Values.namespace }}"
+
+---
+# Role for Frontend Service (minimal permissions)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: "{{ .Values.appName }}-frontend-role"
+  namespace: "{{ .Values.namespace }}"
+rules:
+  # Allow reading ConfigMaps only
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+
+---
+# RoleBinding for Frontend
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: "{{ .Values.appName }}-frontend-rolebinding"
+  namespace: "{{ .Values.namespace }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: "{{ .Values.appName }}-frontend-role"
+subjects:
+  - kind: ServiceAccount
+    name: "{{ .Values.appName }}-frontend"
+    namespace: "{{ .Values.namespace }}"
+
+---
+# Role for Analytics Service
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: "{{ .Values.appName }}-analytics-role"
+  namespace: "{{ .Values.namespace }}"
+rules:
+  # Allow reading ConfigMaps and Secrets
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames:
+      - "{{ .Values.appName }}-secrets"
+  # Allow reading pods for metrics collection
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+
+---
+# RoleBinding for Analytics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: "{{ .Values.appName }}-analytics-rolebinding"
+  namespace: "{{ .Values.namespace }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: "{{ .Values.appName }}-analytics-role"
+subjects:
+  - kind: ServiceAccount
+    name: "{{ .Values.appName }}-analytics"
+    namespace: "{{ .Values.namespace }}"
+
+---
+# Network Policy for Backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ .Values.appName }}-backend-netpol"
+  namespace: "{{ .Values.namespace }}"
+spec:
+  podSelector:
+    matchLabels:
+      app: "{{ .Values.appName }}-backend"
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: "{{ .Values.appName }}-frontend"
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow to database
+    - to:
+        - podSelector:
+            matchLabels:
+              app: "{{ .Values.appName }}-database"
+      ports:
+        - protocol: TCP
+          port: 3306
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: "{{ .Values.appName }}-redis"
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow external HTTPS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Network Policy for Database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "{{ .Values.appName }}-database-netpol"
+  namespace: "{{ .Values.namespace }}"
+spec:
+  podSelector:
+    matchLabels:
+      app: "{{ .Values.appName }}-database"
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only allow from backend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: "{{ .Values.appName }}-backend"
+      ports:
+        - protocol: TCP
+          port: 3306
+  egress:
+    # Allow DNS only
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53

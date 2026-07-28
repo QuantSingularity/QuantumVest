@@ -1,0 +1,10 @@
+.selected-asset-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  border: 1px solid var(--border-strong);
+  font-size: 0.9rem;
+}

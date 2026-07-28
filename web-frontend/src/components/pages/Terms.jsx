@@ -1,73 +1,52 @@
 import React from "react";
-import { motion } from "framer-motion";
+import "../../styles/StaticPages.css";
 
-const sections = [
+const SECTIONS = [
   {
     title: "Acceptance of Terms",
-    body: "By accessing or using QuantumVest, you agree to be bound by these Terms of Service and our Privacy Policy. If you do not agree, please do not use our platform.",
+    body: "By creating an account and using QuantumVest, you agree to these Terms of Service and our Privacy Policy.",
   },
   {
-    title: "Investment Disclaimer",
-    body: "QuantumVest provides AI-generated predictions and analytics for informational purposes only. Nothing on this platform constitutes financial advice. All investment decisions are solely your responsibility.",
+    title: "Not Financial Advice",
+    body: "QuantumVest provides analytics, risk metrics, and optimization tooling for informational purposes only. Nothing in the platform constitutes financial, investment, or legal advice.",
   },
   {
     title: "Account Responsibilities",
-    body: "You are responsible for maintaining the confidentiality of your credentials and all activities under your account. Notify us immediately of any unauthorized access.",
+    body: "You are responsible for maintaining the confidentiality of your login credentials and for all activity under your account.",
   },
   {
-    title: "Prohibited Use",
-    body: "You may not use QuantumVest to engage in market manipulation, money laundering, or any activity that violates applicable laws or regulations.",
+    title: "Portfolio & Transaction Data",
+    body: "Data you enter (portfolios, transactions, watchlists) is stored to power the features you use. You can delete portfolios and watchlists at any time from the app.",
   },
   {
-    title: "Intellectual Property",
-    body: "All platform content, including AI models, algorithms, and UI, is the exclusive property of QuantumVest, Inc. and is protected by applicable IP laws.",
+    title: "Service Availability",
+    body: 'QuantumVest is provided "as is" without warranty of any kind. Features such as AI predictions may be in active research and are clearly labeled as such.',
   },
   {
-    title: "Limitation of Liability",
-    body: "QuantumVest shall not be liable for any indirect, incidental, or consequential damages arising from your use of the platform or reliance on any predictions.",
-  },
-  {
-    title: "Termination",
-    body: "We reserve the right to suspend or terminate your account for violations of these terms, with or without notice, at our sole discretion.",
+    title: "Changes to These Terms",
+    body: "We may update these terms from time to time. Continued use of the platform after changes constitutes acceptance of the updated terms.",
   },
 ];
 
 const Terms = () => (
-  <div className="profile-page">
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <h1 className="section-title">Terms of Service</h1>
-      <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
-        Last updated: January 1, 2025
-      </p>
-      <div className="card" style={{ maxWidth: 760, margin: "0 auto" }}>
-        {sections.map(({ title, body }) => (
-          <div key={title} style={{ marginBottom: 28 }}>
-            <h3 style={{ marginBottom: 8 }}>{title}</h3>
-            <p style={{ color: "var(--text-secondary)", margin: 0 }}>{body}</p>
+  <div className="static-page">
+    <div className="container static-page-inner">
+      <h1>Terms of Service</h1>
+      <p className="static-page-meta">Last updated: January 1, 2026</p>
+      <div className="card static-page-card">
+        {SECTIONS.map(({ title, body }) => (
+          <div key={title} className="static-page-section">
+            <h3>{title}</h3>
+            <p>{body}</p>
           </div>
         ))}
-        <hr
-          style={{
-            margin: "24px 0",
-            border: "none",
-            borderTop: "1px solid var(--border-color)",
-          }}
-        />
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-          Questions? Contact{" "}
-          <a
-            href="mailto:legal@quantumvest.io"
-            style={{ color: "var(--primary-color)" }}
-          >
-            legal@quantumvest.io
-          </a>
+        <hr className="divider" />
+        <p className="text-secondary" style={{ fontSize: "0.9rem" }}>
+          Questions? Email us at{" "}
+          <a href="mailto:legal@quantumvest.io">legal@quantumvest.io</a>
         </p>
       </div>
-    </motion.div>
+    </div>
   </div>
 );
 

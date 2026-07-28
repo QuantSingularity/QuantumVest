@@ -77,7 +77,17 @@ frontend:
     targetCPUUtilizationPercentage: 70
 
 database:
-  replicas: 3
+  # NOTE: this StatefulSet runs stock MySQL with no replication/clustering
+  # configured — no init scripts wiring up binlog/GTID replication, and no
+  # operator (e.g. Percona XtraDB Cluster, InnoDB Group Replication). Raising
+  # replicas beyond 1 does NOT create a MySQL cluster; it creates that many
+  # completely independent MySQL instances, each with its own separate data,
+  # and the headless Service round-robins across them — meaning the app
+  # could read/write inconsistent data depending on which pod it happens to
+  # hit. For real HA, use either a proper MySQL operator or the
+  # Terraform + RDS path (infrastructure/terraform/modules/database, which
+  # supports multi_az).
+  replicas: 1
   image:
     repository: mysql
     tag: "8.0"
@@ -86,6 +96,10 @@ database:
   servicePort: 3306
   name: quantumvestdb
   user: appuser
+  # Secrets must be provided via external-secrets or Vault — never set here in plain text
+  url: ""
+  rootPassword: ""
+  password: ""
   storageClass: premium-rwo
   storage: 50Gi
   resources:
@@ -97,7 +111,14 @@ database:
       memory: 4Gi
 
 redis:
-  replicas: 3
+  # No Redis Cluster/Sentinel configured — see the note on database.replicas
+  # above; the same reasoning applies here.
+  replicas: 1
+  # Secrets must be provided via external-secrets or Vault — never set here in plain text
+  url: ""
+  # redis-server's --maxmemory needs its own unit suffixes (mb/gb), not
+  # Kubernetes' Mi/Gi — keep this roughly in line with resources.limits.memory below.
+  maxmemory: "1600mb"
   image:
     repository: redis
     tag: "7.2-alpine"
@@ -128,3 +149,14 @@ vault:
 
 logLevel: warn
 imagePullSecrets: regcred
+
+# Referenced by templates/resource-quota.yaml — must exist as at least an
+# empty "hard" map, or Helm errors on the nil-chain before the `| default`
+# fallbacks in that template ever get a chance to apply.
+resourceQuota:
+  hard:
+    requests_cpu: "60"
+    requests_memory: "120Gi"
+    limits_cpu: "100"
+    limits_memory: "200Gi"
+    persistentvolumeclaims: "40"

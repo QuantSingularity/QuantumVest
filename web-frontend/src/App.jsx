@@ -1,178 +1,156 @@
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
-import {
-  Route,
-  BrowserRouter as Router,
-  Routes,
-  useLocation,
-} from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import "./styles/App.css";
 
-import Footer from "./components/layout/Footer";
-import Header from "./components/layout/Header";
-import Sidebar from "./components/layout/Sidebar";
-import Analytics from "./components/pages/Analytics";
-import Contact from "./components/pages/Contact";
-import Dashboard from "./components/pages/Dashboard";
-import ForgotPassword from "./components/pages/ForgotPassword";
-import Homepage from "./components/pages/Homepage/Homepage";
-import Login from "./components/pages/Login";
-import NotFound from "./components/pages/NotFound";
-import PortfolioOptimization from "./components/pages/PortfolioOptimization";
-import PredictionChart from "./components/pages/PredictionChart";
-import Privacy from "./components/pages/Privacy";
-import Profile from "./components/pages/Profile";
-import Register from "./components/pages/Register";
-import Settings from "./components/pages/Settings";
-import Terms from "./components/pages/Terms";
-import Watchlist from "./components/pages/Watchlist";
+import PublicLayout from "./components/layout/PublicLayout";
+import AppShell from "./components/layout/AppShell";
+import ProtectedRoute from "./components/routing/ProtectedRoute";
+import PublicOnlyRoute from "./components/routing/PublicOnlyRoute";
+import LoadingSpinner from "./components/ui/LoadingSpinner";
+
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import ToastManager from "./components/ui/ToastManager";
 
-// Pages that get the full-screen auth layout (no sidebar / header)
-const AUTH_PATHS = ["/login", "/register", "/forgot-password"];
+const Homepage = lazy(() => import("./components/pages/Homepage/Homepage"));
+const Contact = lazy(() => import("./components/pages/Contact"));
+const Privacy = lazy(() => import("./components/pages/Privacy"));
+const Terms = lazy(() => import("./components/pages/Terms"));
+const NotFound = lazy(() => import("./components/pages/NotFound"));
 
-// Pages that get a "homepage mode" layout (no sidebar padding, full width)
-const HOMEPAGE_PATHS = ["/"];
+const Login = lazy(() => import("./components/pages/Login"));
+const Register = lazy(() => import("./components/pages/Register"));
+const ForgotPassword = lazy(() => import("./components/pages/ForgotPassword"));
 
-// Map routes → page titles shown in Header
-const TITLE_MAP = {
-  "/": "Home",
-  "/dashboard": "Dashboard",
-  "/predictions": "Predictions",
-  "/optimize": "Portfolio Optimization",
-  "/analytics": "Analytics",
-  "/settings": "Settings",
-  "/watchlist": "Watchlist",
-  "/profile": "My Profile",
-  "/contact": "Contact Us",
-  "/privacy": "Privacy Policy",
-  "/terms": "Terms of Service",
-  "/login": "Sign In",
-  "/register": "Create Account",
-  "/forgot-password": "Forgot Password",
-};
+const Dashboard = lazy(() => import("./components/pages/Dashboard"));
+const Portfolios = lazy(() => import("./components/pages/Portfolios"));
+const PortfolioDetail = lazy(
+  () => import("./components/pages/PortfolioDetail"),
+);
+const Watchlist = lazy(() => import("./components/pages/Watchlist"));
+const RiskAnalytics = lazy(() => import("./components/pages/RiskAnalytics"));
+const Predictions = lazy(() => import("./components/pages/Predictions"));
+const Profile = lazy(() => import("./components/pages/Profile"));
+const Settings = lazy(() => import("./components/pages/Settings"));
 
-function AppContent() {
-  const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [currentPage, setCurrentPage] = useState("Home");
+const PageFallback = () => <LoadingSpinner fullScreen message="Loading..." />;
 
-  const isAuthPage = AUTH_PATHS.includes(location.pathname);
-  const isHomepage = HOMEPAGE_PATHS.includes(location.pathname);
-
-  const updatePageTitle = useCallback((pathname) => {
-    setCurrentPage(TITLE_MAP[pathname] || "QuantumVest");
-  }, []);
-
-  useEffect(() => {
-    updatePageTitle(location.pathname);
-  }, [location.pathname, updatePageTitle]);
-
-  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
-
-  const pageVariants = {
-    initial: { opacity: 0, y: 20 },
-    in: { opacity: 1, y: 0 },
-    out: { opacity: 0, y: -20 },
-  };
-  const pageTransition = { type: "tween", ease: "anticipate", duration: 0.4 };
-
-  const wrapPage = (Component) => (
-    <motion.div
-      initial="initial"
-      animate="in"
-      exit="out"
-      variants={pageVariants}
-      transition={pageTransition}
-    >
+// Wraps a protected page with the authenticated app shell (sidebar/header/footer)
+const withShell = (title, Component) => (
+  <ProtectedRoute>
+    <AppShell title={title}>
       <Component />
-    </motion.div>
-  );
+    </AppShell>
+  </ProtectedRoute>
+);
 
-  // ── Auth layout (login / register / forgot-password) ─────────────────────
-  if (isAuthPage) {
-    return (
-      <div className="app-container">
-        <ErrorBoundary>
-          <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
-              <Route path="/login" element={wrapPage(Login)} />
-              <Route path="/register" element={wrapPage(Register)} />
-              <Route
-                path="/forgot-password"
-                element={wrapPage(ForgotPassword)}
-              />
-            </Routes>
-          </AnimatePresence>
-          <ToastManager />
-        </ErrorBoundary>
-      </div>
-    );
-  }
-
-  // ── Main app layout (sidebar + header + footer) ──────────────────────────
-  return (
-    <div className="app-container">
-      <ErrorBoundary>
-        <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
-        <div
-          className={`content-wrapper ${sidebarOpen ? "sidebar-open" : ""} ${
-            isHomepage ? "homepage-mode" : ""
-          }`}
-        >
-          <Header toggleSidebar={toggleSidebar} pageTitle={currentPage} />
-
-          <main
-            className={`main-content ${isHomepage ? "homepage-content" : ""}`}
-          >
-            <ErrorBoundary>
-              <AnimatePresence mode="wait">
-                <Routes location={location} key={location.pathname}>
-                  {/* Core pages */}
-                  <Route path="/" element={wrapPage(Homepage)} />
-                  <Route path="/dashboard" element={wrapPage(Dashboard)} />
-                  <Route
-                    path="/predictions"
-                    element={wrapPage(PredictionChart)}
-                  />
-                  <Route
-                    path="/optimize"
-                    element={wrapPage(PortfolioOptimization)}
-                  />
-                  <Route path="/analytics" element={wrapPage(Analytics)} />
-                  <Route path="/watchlist" element={wrapPage(Watchlist)} />
-                  <Route path="/settings" element={wrapPage(Settings)} />
-
-                  {/* New pages */}
-                  <Route path="/profile" element={wrapPage(Profile)} />
-                  <Route path="/contact" element={wrapPage(Contact)} />
-                  <Route path="/privacy" element={wrapPage(Privacy)} />
-                  <Route path="/terms" element={wrapPage(Terms)} />
-
-                  {/* 404 */}
-                  <Route path="*" element={wrapPage(NotFound)} />
-                </Routes>
-              </AnimatePresence>
-            </ErrorBoundary>
-          </main>
-
-          <Footer />
-        </div>
-
-        <ToastManager />
-      </ErrorBoundary>
-    </div>
-  );
-}
-
-// ThemeProvider wraps App in index.js — not duplicated here.
 function App() {
   return (
     <Router>
-      <AppContent />
+      <ErrorBoundary>
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            {/* ── Public marketing pages ─────────────────────────── */}
+            <Route
+              path="/"
+              element={
+                <PublicLayout>
+                  <Homepage />
+                </PublicLayout>
+              }
+            />
+            <Route
+              path="/contact"
+              element={
+                <PublicLayout>
+                  <Contact />
+                </PublicLayout>
+              }
+            />
+            <Route
+              path="/privacy"
+              element={
+                <PublicLayout>
+                  <Privacy />
+                </PublicLayout>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <PublicLayout>
+                  <Terms />
+                </PublicLayout>
+              }
+            />
+
+            {/* ── Auth pages (redirect to /dashboard if already signed in) ── */}
+            <Route
+              path="/login"
+              element={
+                <PublicOnlyRoute>
+                  <Login />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicOnlyRoute>
+                  <Register />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicOnlyRoute>
+                  <ForgotPassword />
+                </PublicOnlyRoute>
+              }
+            />
+
+            {/* ── Protected app ──────────────────────────────────── */}
+            <Route
+              path="/dashboard"
+              element={withShell("Dashboard", Dashboard)}
+            />
+            <Route
+              path="/portfolios"
+              element={withShell("Portfolios", Portfolios)}
+            />
+            <Route
+              path="/portfolios/:id"
+              element={withShell("Portfolio", PortfolioDetail)}
+            />
+            <Route
+              path="/watchlist"
+              element={withShell("Watchlist", Watchlist)}
+            />
+            <Route
+              path="/risk-analytics"
+              element={withShell("Risk Analytics", RiskAnalytics)}
+            />
+            <Route
+              path="/predictions"
+              element={withShell("AI Predictions", Predictions)}
+            />
+            <Route path="/profile" element={withShell("My Profile", Profile)} />
+            <Route path="/settings" element={withShell("Settings", Settings)} />
+
+            {/* ── 404 ─────────────────────────────────────────────── */}
+            <Route
+              path="*"
+              element={
+                <PublicLayout>
+                  <NotFound />
+                </PublicLayout>
+              }
+            />
+          </Routes>
+        </Suspense>
+
+        <ToastManager />
+      </ErrorBoundary>
     </Router>
   );
 }

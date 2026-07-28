@@ -1,0 +1,32 @@
+.predictions-empty {
+  text-align: center;
+  padding: var(--space-xl) var(--space-md) var(--space-md);
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.predictions-empty h4 {
+  margin-bottom: 0.4rem;
+}
+
+.predictions-roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.predictions-roadmap-item {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.predictions-roadmap-item h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+}
+
+.predictions-roadmap-item p {
+  font-size: 0.85rem;
+  margin: 0;
+}

@@ -5,11 +5,11 @@ import { storage } from "../utils/helpers";
 export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState(() => storage.get("theme", "dark"));
 
   // Initialize theme from localStorage on mount
   useEffect(() => {
-    const savedTheme = storage.get("theme", "light");
+    const savedTheme = storage.get("theme", "dark");
     setTheme(savedTheme);
     // Apply BOTH mechanisms: data-theme on <html> for CSS var overrides,
     // AND dark-theme class on <body> so all ".dark-theme X" selectors match.

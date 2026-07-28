@@ -17,9 +17,6 @@ helm version
 
 # Optional: kubeval for validation
 kubeval --version
-
-# Optional: kustomize
-kustomize version
 ```
 
 ### Cluster Access
@@ -38,7 +35,9 @@ kubectl config set-context --current --namespace=quantumvest-production
 ```
 kubernetes/
 ├── README.md                    # This file
-├── base/                        # Base manifests (using Helm templates)
+├── Chart.yaml                   # Helm chart metadata
+├── values.yaml                  # Default (dev-like) values
+├── templates/                   # Helm templates
 │   ├── app-configmap.yaml      # Application configuration
 │   ├── app-secrets.yaml        # Secrets (DO NOT commit actual secrets)
 │   ├── app-secrets.example.yaml # Secret template
@@ -53,7 +52,7 @@ kubernetes/
 │   ├── redis-pvc.yaml          # Redis storage
 │   ├── redis-service.yaml       # Redis Service
 │   └── rbac.yaml               # RBAC policies
-└── environments/                # Environment-specific values
+└── environments/                # Per-environment value overrides
     ├── dev/
     │   └── values.yaml
     ├── staging/
@@ -66,38 +65,47 @@ kubernetes/
 
 ### 1. Prepare Secrets
 
+`templates/app-secrets.yaml` is a Helm template — it reads plaintext values
+like `.Values.database.rootPassword` and base64-encodes them itself via the
+`b64enc` function. You never hand-encode or edit `app-secrets.yaml` directly;
+instead supply the plaintext secrets Helm should inject, either with `--set`
+or (better, for anything beyond local dev) a separate, untracked values file:
+
 ```bash
-# Copy example secrets file
-cp base/app-secrets.example.yaml base/app-secrets.yaml
+cat > secrets.local.yaml << EOF
+database:
+  url: "mysql+pymysql://appuser:\$(openssl rand -base64 24)@quantumvest-database:3306/quantumvestdb"
+  rootPassword: "$(openssl rand -base64 24)"
+  password: "$(openssl rand -base64 24)"
+redis:
+  url: "redis://:$(openssl rand -base64 24)@quantumvest-redis:6379/0"
+backend:
+  jwtSecret: "$(openssl rand -base64 32)"
+  apiKey: "$(openssl rand -base64 32)"
+  encryptionKey: "$(openssl rand -base64 32)"
+EOF
 
-# Generate secure secrets
-JWT_SECRET=$(openssl rand -base64 32)
-DB_PASSWORD=$(openssl rand -base64 24)
-MYSQL_ROOT_PASSWORD=$(openssl rand -base64 24)
-
-# Encode for Kubernetes
-echo -n "postgresql://user:${DB_PASSWORD}@db:5432/quantumvest" | base64
-echo -n "${JWT_SECRET}" | base64
-echo -n "${MYSQL_ROOT_PASSWORD}" | base64
-
-# Edit app-secrets.yaml with base64-encoded values
-vi base/app-secrets.yaml
+# Pass it alongside the environment values file at install time (see below):
+#   helm install quantumvest . -f environments/dev/values.yaml -f secrets.local.yaml
+# Never commit secrets.local.yaml.
 ```
+
+`templates/app-secrets.example.yaml` documents the full set of expected keys.
 
 ### 2. Validate Manifests
 
+kubectl and kubeval can't parse the raw templates directly (they contain
+literal `{{ .Values.x }}` syntax, which isn't valid YAML/Kubernetes on its
+own) — render them with `helm template` first, then validate the output:
+
 ```bash
-# Lint YAML files
-yamllint base/
+# Lint the chart itself (catches template/values errors)
+helm lint . --values environments/dev/values.yaml
 
-# Validate with kubectl (dry-run)
-kubectl apply --dry-run=client -f base/
-
-# Validate with kubeval (if installed)
-kubeval base/*.yaml
-
-# Check for deprecated APIs
-kubectl apply --dry-run=server -f base/
+# Render, then validate the rendered manifests
+helm template quantumvest . --values environments/dev/values.yaml > /tmp/rendered.yaml
+kubectl apply --dry-run=client -f /tmp/rendered.yaml
+kubeval /tmp/rendered.yaml   # if installed
 ```
 
 ### 3. Deploy to Cluster
@@ -106,14 +114,11 @@ kubectl apply --dry-run=server -f base/
 # Create namespace
 kubectl create namespace quantumvest-dev
 
-# Apply manifests
-kubectl apply -f base/ -n quantumvest-dev
-
-# Or use Helm (recommended)
-helm install quantumvest ../helm/quantumvest/ \
+# Deploy with Helm
+helm install quantumvest . \
   --namespace quantumvest-dev \
   --create-namespace \
-  --values ../helm/quantumvest/values.yaml
+  --values environments/dev/values.yaml
 ```
 
 ### 4. Verify Deployment
@@ -137,51 +142,31 @@ kubectl describe pod <pod-name> -n quantumvest-dev
 
 ## Deployment Methods
 
-### Method 1: Direct kubectl (Development)
+This chart is Helm-templated (`{{ .Values.x }}` throughout `templates/`), so
+Helm is the only way to render or deploy it — `kubectl apply -f templates/`
+won't work (kubectl has no concept of Helm templating), and neither does
+Kustomize (it doesn't process Helm syntax either).
 
 ```bash
-# Apply all manifests
-kubectl apply -f base/ -n quantumvest-dev
+# Preview the rendered manifests without deploying anything
+helm template quantumvest . --values environments/dev/values.yaml
 
-# Update specific resource
-kubectl apply -f base/backend-deployment.yaml -n quantumvest-dev
-
-# Delete resources
-kubectl delete -f base/ -n quantumvest-dev
-```
-
-### Method 2: Helm (Recommended)
-
-```bash
 # Install
-helm install quantumvest ../helm/quantumvest/ \
+helm install quantumvest . \
   --namespace quantumvest-production \
   --create-namespace \
-  --values ../helm/quantumvest/values-production.yaml
+  --values environments/prod/values.yaml
 
 # Upgrade
-helm upgrade quantumvest ../helm/quantumvest/ \
+helm upgrade quantumvest . \
   --namespace quantumvest-production \
-  --values ../helm/quantumvest/values-production.yaml
+  --values environments/prod/values.yaml
 
 # Rollback
 helm rollback quantumvest 1 -n quantumvest-production
 
 # Uninstall
 helm uninstall quantumvest -n quantumvest-production
-```
-
-### Method 3: Kustomize (Advanced)
-
-```bash
-# Build manifests
-kustomize build ./environments/prod/
-
-# Apply with kubectl
-kubectl apply -k ./environments/prod/
-
-# Diff before applying
-kubectl diff -k ./environments/prod/
 ```
 
 ## Environment Configuration
@@ -192,7 +177,7 @@ kubectl diff -k ./environments/prod/
 # Small resource limits
 # Single replicas
 # No autoscaling
-helm install quantumvest ../helm/quantumvest/ \
+helm install quantumvest . \
   --namespace quantumvest-dev \
   --values environments/dev/values.yaml
 ```
@@ -203,7 +188,7 @@ helm install quantumvest ../helm/quantumvest/ \
 # Medium resources
 # 2 replicas
 # Autoscaling enabled
-helm install quantumvest ../helm/quantumvest/ \
+helm install quantumvest . \
   --namespace quantumvest-staging \
   --values environments/staging/values.yaml
 ```
@@ -215,7 +200,7 @@ helm install quantumvest ../helm/quantumvest/ \
 # 3+ replicas
 # Autoscaling + anti-affinity
 # Full monitoring
-helm install quantumvest ../helm/quantumvest/ \
+helm install quantumvest . \
   --namespace quantumvest-production \
   --values environments/prod/values.yaml
 ```
@@ -227,7 +212,7 @@ helm install quantumvest ../helm/quantumvest/ \
 ```bash
 # Create secret from literals
 kubectl create secret generic quantumvest-secrets \
-  --from-literal=database-url="postgresql://..." \
+  --from-literal=database-url="mysql+pymysql://..." \
   --from-literal=jwt-secret="your-secret" \
   -n quantumvest-dev
 
@@ -394,7 +379,7 @@ kubectl get pods -l app=quantumvest-backend -n quantumvest-production
 
 # Test service from within cluster
 kubectl run -it --rm debug --image=busybox -n quantumvest-production \
-  -- wget -qO- http://quantumvest-backend:80/health
+  -- wget -qO- http://quantumvest-backend:80/api/v1/health
 ```
 
 ### Ingress Issues
@@ -452,7 +437,7 @@ kubectl describe networkpolicy quantumvest-backend-netpol -n quantumvest-product
 
 # Test connectivity
 kubectl run -it --rm debug --image=busybox -n quantumvest-production \
-  -- wget -qO- --timeout=5 http://quantumvest-backend:80/health
+  -- wget -qO- --timeout=5 http://quantumvest-backend:80/api/v1/health
 ```
 
 ### Pod Security
@@ -531,7 +516,7 @@ kubectl wait --for=condition=ready pod -l app=quantumvest-backend -n quantumvest
 
 # Test health endpoints
 kubectl run -it --rm curl --image=curlimages/curl -n quantumvest-production \
-  -- curl -f http://quantumvest-backend/health
+  -- curl -f http://quantumvest-backend/api/v1/health
 
 # Test frontend
 kubectl run -it --rm curl --image=curlimages/curl -n quantumvest-production \
@@ -545,5 +530,5 @@ kubectl run -it --rm curl --image=curlimages/curl -n quantumvest-production \
 go install github.com/rakyll/hey@latest
 
 # Run load test
-hey -n 10000 -c 100 https://quantumvest.com/api/health
+hey -n 10000 -c 100 https://quantumvest.com/api/v1/health
 ```

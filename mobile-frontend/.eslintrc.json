@@ -1,0 +1,47 @@
+{
+  "root": true,
+  "env": {
+    "es2021": true,
+    "node": true,
+    "jest": true,
+    "react-native/react-native": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:react-native/all"
+  ],
+  "plugins": ["react", "react-hooks", "react-native"],
+  "parserOptions": {
+    "ecmaFeatures": { "jsx": true },
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "overrides": [
+    {
+      "files": ["e2e/**/*.js"],
+      "env": { "jest": true },
+      "globals": {
+        "device": "readonly",
+        "element": "readonly",
+        "by": "readonly",
+        "waitFor": "readonly",
+        "expect": "readonly"
+      }
+    }
+  ],
+  "settings": {
+    "react": { "version": "detect" }
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "react/prop-types": "off",
+    "react/react-in-jsx-scope": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "react-native/no-raw-text": "off",
+    "react-native/no-color-literals": "off",
+    "react-native/no-inline-styles": "off",
+    "react-native/sort-styles": "off"
+  }
+}

@@ -8,6 +8,37 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
+# RDS Enhanced Monitoring (monitoring_interval > 0, enabled below for prod)
+# requires an IAM role RDS can assume to publish metrics to CloudWatch —
+# without it, `terraform apply` fails with "Monitoring Role ARN must be set
+# when Monitoring Interval is set to a value other than 0".
+resource "aws_iam_role" "rds_enhanced_monitoring" {
+  count = var.environment == "prod" ? 1 : 0
+
+  name = "${var.db_name}-${var.environment}-rds-monitoring"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "monitoring.rds.amazonaws.com" }
+    }]
+  })
+
+  tags = {
+    Name        = "${var.db_name}-${var.environment}-rds-monitoring"
+    Environment = var.environment
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "rds_enhanced_monitoring" {
+  count = var.environment == "prod" ? 1 : 0
+
+  role       = aws_iam_role.rds_enhanced_monitoring[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
+
 resource "aws_db_parameter_group" "main" {
   name   = "${var.db_name}-${var.environment}-params"
   family = "mysql8.0"
@@ -67,6 +98,7 @@ resource "aws_db_instance" "main" {
   performance_insights_enabled          = var.environment == "prod" ? true : false
   performance_insights_retention_period = var.environment == "prod" ? 7 : null
   monitoring_interval                   = var.environment == "prod" ? 60 : 0
+  monitoring_role_arn                   = var.environment == "prod" ? aws_iam_role.rds_enhanced_monitoring[0].arn : null
   enabled_cloudwatch_logs_exports       = ["error", "slowquery"]
 
   tags = {

@@ -2,17 +2,20 @@ import React from "react";
 import { useEffect, useState } from "react";
 import Toast from "./Toast";
 import "../../styles/ToastManager.css";
+export { showToast } from "../../utils/helpers";
 
 const ToastManager = () => {
   const [toasts, setToasts] = useState([]);
+  const idCounter = React.useRef(0);
 
   // Add a global event listener for showing toasts
   useEffect(() => {
     const showToast = (event) => {
       const { message, type, duration } = event.detail;
 
+      idCounter.current += 1;
       const newToast = {
-        id: Date.now(),
+        id: `${Date.now()}-${idCounter.current}`,
         message,
         type: type || "info",
         duration: duration || 3000,
@@ -44,15 +47,6 @@ const ToastManager = () => {
         />
       ))}
     </div>
-  );
-};
-
-// Helper function to show toasts from anywhere in the app
-export const showToast = (message, type = "info", duration = 3000) => {
-  window.dispatchEvent(
-    new CustomEvent("show-toast", {
-      detail: { message, type, duration },
-    }),
   );
 };
 

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: quantumvest
+description: QuantumVest — AI-driven portfolio management platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - quantumvest
+  - fintech
+  - portfolio-management
+maintainers:
+  - name: QuantumVest Team

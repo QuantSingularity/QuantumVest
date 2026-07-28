@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.appName }}-redis"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}-redis"
+    tier: cache
+    component: redis
+    environment: "{{ .Values.environment }}"
+spec:
+  replicas: { { .Values.redis.replicas } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-redis"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.appName }}-redis"
+        tier: cache
+        component: redis
+        environment: "{{ .Values.environment }}"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: "{{ .Values.appName }}-redis"
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: "{{ .Values.redis.image.pullPolicy }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: redis
+              containerPort: { { .Values.redis.containerPort } }
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "{{ .Values.redis.resources.limits.cpu }}"
+              memory: "{{ .Values.redis.resources.limits.memory }}"
+            requests:
+              cpu: "{{ .Values.redis.resources.requests.cpu }}"
+              memory: "{{ .Values.redis.resources.requests.memory }}"
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - '{{ .Values.redis.maxmemory | default "256mb" }}'
+            - --maxmemory-policy
+            - allkeys-lru
+            - --requirepass
+            - "$(REDIS_PASSWORD)"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.appName }}-secrets"
+                  key: redis-password
+                  optional: true
+          volumeMounts:
+            - name: "{{ .Values.appName }}-redis-data"
+              mountPath: /data
+            - name: redis-tmp
+              mountPath: /tmp
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: "{{ .Values.appName }}-redis-data"
+          persistentVolumeClaim:
+            claimName: "{{ .Values.appName }}-redis-pvc"
+        - name: redis-tmp
+          emptyDir:
+            sizeLimit: 50Mi

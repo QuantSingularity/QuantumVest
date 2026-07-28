@@ -3,32 +3,10 @@ import React, { createContext, useState } from "react";
 // Create Notification Context
 export const NotificationContext = createContext();
 
-const SEED_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: "success",
-    title: "Portfolio Updated",
-    message: "Your portfolio rebalancing was completed successfully.",
-    read: false,
-    timestamp: new Date(),
-  },
-  {
-    id: 2,
-    type: "info",
-    title: "AI Prediction Ready",
-    message: "New 7-day price predictions are available for your watchlist.",
-    read: false,
-    timestamp: new Date(),
-  },
-  {
-    id: 3,
-    type: "warning",
-    title: "Market Alert",
-    message: "High volatility detected in your TSLA position.",
-    read: true,
-    timestamp: new Date(),
-  },
-];
+// Notifications start empty and are populated by real actions across the
+// app (transactions, portfolio changes, security events) — see
+// useNotifications().addNotification() call sites.
+const SEED_NOTIFICATIONS = [];
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState(SEED_NOTIFICATIONS);

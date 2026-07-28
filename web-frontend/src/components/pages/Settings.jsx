@@ -1,509 +1,175 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
-import { authAPI, settingsAPI } from "../../services/api";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "../../contexts/ThemeContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { showToast, storage } from "../../utils/helpers";
 import "../../styles/Settings.css";
-import LoadingSpinner from "../ui/LoadingSpinner";
-import { showToast } from "../ui/ToastManager";
+
+const DEFAULT_PREFS = {
+  emailDigest: true,
+  priceAlerts: true,
+  transactionAlerts: true,
+};
 
 const Settings = () => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [prefs, setPrefs] = useState(() =>
+    storage.get("qv_notification_prefs", DEFAULT_PREFS),
+  );
 
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    sms: false,
-  });
-
-  const [theme, setTheme] = useState("system");
-  const [language, setLanguage] = useState("english");
-  const [currency, setCurrency] = useState("usd");
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-
-  const [personalInfo, setPersonalInfo] = useState({
-    name: "",
-    email: "",
-    phone: "",
-  });
-
-  const [passwordForm, setPasswordForm] = useState({
-    current: "",
-    new: "",
-    confirm: "",
-  });
-
-  // BUG FIX: fetchUserData was listed as a useEffect dependency but was
-  // redefined on every render, causing an infinite fetch loop.
-  // Wrapping in useCallback gives it a stable identity.
-  const fetchUserData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      try {
-        const profileResponse = await authAPI.getProfile();
-        if (profileResponse.data.success && profileResponse.data.user) {
-          const user = profileResponse.data.user;
-          setPersonalInfo({
-            name:
-              `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-              user.username,
-            email: user.email || "",
-            phone: user.phone || "",
-          });
-          if (user.preferred_currency) {
-            setCurrency(user.preferred_currency.toLowerCase());
-          }
-        }
-      } catch {
-        setPersonalInfo({
-          name: "John Doe",
-          email: "john.doe@example.com",
-          phone: "+1 (555) 123-4567",
-        });
-      }
-
-      try {
-        const settingsResponse = await settingsAPI.getSettings();
-        if (settingsResponse.data.success && settingsResponse.data.settings) {
-          const s = settingsResponse.data.settings;
-          setNotifications({
-            email: s.email_notifications !== false,
-            push: s.push_notifications !== false,
-            sms: s.sms_notifications !== false,
-          });
-          setTwoFactorEnabled(s.two_factor_enabled || false);
-        }
-      } catch {
-        // Use defaults silently
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      showToast("Could not load settings. Using defaults.", "warning");
-    } finally {
-      setLoading(false);
-    }
-  }, []); // stable — no external deps; API functions are module-level constants
-
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
-
-  const handleNotificationToggle = (type) => {
-    setNotifications((prev) => ({ ...prev, [type]: !prev[type] }));
+  const updatePref = (key) => {
+    setPrefs((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      storage.set("qv_notification_prefs", next);
+      return next;
+    });
   };
 
-  const handlePersonalInfoChange = (e) => {
-    const { name, value } = e.target;
-    setPersonalInfo((prev) => ({ ...prev, [name]: value }));
+  const handleLogout = async () => {
+    await logout();
+    showToast("Signed out", "info");
+    navigate("/");
   };
-
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e, formType) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      if (formType === "Account") {
-        const [firstName, ...lastNameParts] = personalInfo.name.split(" ");
-        const lastName = lastNameParts.join(" ");
-        const response = await authAPI.updateProfile({
-          first_name: firstName,
-          last_name: lastName,
-          phone: personalInfo.phone,
-        });
-        if (response.data.success) {
-          showToast("Account settings updated successfully!", "success");
-        } else {
-          throw new Error(response.data.error || "Update failed");
-        }
-      } else if (formType === "Password") {
-        if (passwordForm.new !== passwordForm.confirm) {
-          showToast("New passwords do not match", "error");
-          setSaving(false);
-          return;
-        }
-        if (passwordForm.new.length < 8) {
-          showToast("Password must be at least 8 characters long", "error");
-          setSaving(false);
-          return;
-        }
-        const response = await settingsAPI.changePassword({
-          current_password: passwordForm.current,
-          new_password: passwordForm.new,
-        });
-        if (response.data.success) {
-          showToast("Password updated successfully!", "success");
-          setPasswordForm({ current: "", new: "", confirm: "" });
-        } else {
-          throw new Error(response.data.error || "Password update failed");
-        }
-      } else if (formType === "Preferences") {
-        const response = await settingsAPI.updateSettings({
-          theme,
-          language,
-          preferred_currency: currency.toUpperCase(),
-        });
-        if (response.data.success) {
-          showToast("Preferences saved successfully!", "success");
-        } else {
-          throw new Error(response.data.error || "Update failed");
-        }
-      } else if (formType === "Notifications") {
-        const response = await settingsAPI.updateSettings({
-          email_notifications: notifications.email,
-          push_notifications: notifications.push,
-          sms_notifications: notifications.sms,
-        });
-        if (response.data.success) {
-          showToast("Notification settings updated successfully!", "success");
-        } else {
-          throw new Error(response.data.error || "Update failed");
-        }
-      }
-    } catch (error) {
-      console.error(`Error updating ${formType}:`, error);
-      showToast(
-        error.response?.data?.error ||
-          error.message ||
-          `Failed to update ${formType.toLowerCase()} settings`,
-        "error",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleTwoFactorToggle = async () => {
-    try {
-      setSaving(true);
-      const newValue = !twoFactorEnabled;
-      const response = newValue
-        ? await settingsAPI.enable2FA()
-        : await settingsAPI.disable2FA();
-      if (response.data.success) {
-        setTwoFactorEnabled(newValue);
-        showToast(
-          `Two-factor authentication ${newValue ? "enabled" : "disabled"} successfully!`,
-          "success",
-        );
-      } else {
-        throw new Error(response.data.error || "2FA toggle failed");
-      }
-    } catch (error) {
-      console.error("Error toggling 2FA:", error);
-      showToast(
-        error.response?.data?.error ||
-          "Failed to update two-factor authentication",
-        "error",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleSwitch = (enabled) => ({
-    width: "48px",
-    height: "24px",
-    cursor: saving ? "not-allowed" : "pointer",
-    appearance: "none",
-    backgroundColor: enabled ? "var(--success-color)" : "var(--border-color)",
-    borderRadius: "12px",
-    position: "relative",
-    transition: "var(--transition)",
-    border: "none",
-    outline: "none",
-  });
-
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <LoadingSpinner text="Loading settings" />
-      </div>
-    );
-  }
 
   return (
     <div className="settings-page">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h2 className="section-title">Settings</h2>
-
-        <div className="grid grid-2">
-          {/* Account Settings */}
-          <motion.div
-            className="card"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-          >
-            <h3 className="card-title">Account Settings</h3>
-            <form onSubmit={(e) => handleSubmit(e, "Account")}>
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  name="name"
-                  value={personalInfo.name}
-                  onChange={handlePersonalInfoChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  name="email"
-                  value={personalInfo.email}
-                  onChange={handlePersonalInfoChange}
-                  disabled
-                  title="Email cannot be changed"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input
-                  type="tel"
-                  className="form-control"
-                  name="phone"
-                  value={personalInfo.phone}
-                  onChange={handlePersonalInfoChange}
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </form>
-          </motion.div>
-
-          {/* Security Settings */}
-          <motion.div
-            className="card"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-          >
-            <h3 className="card-title">Security</h3>
-            <form onSubmit={(e) => handleSubmit(e, "Password")}>
-              <div className="form-group">
-                <label className="form-label">Current Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  name="current"
-                  value={passwordForm.current}
-                  onChange={handlePasswordChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  name="new"
-                  value={passwordForm.new}
-                  onChange={handlePasswordChange}
-                  required
-                  minLength="8"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  name="confirm"
-                  value={passwordForm.confirm}
-                  onChange={handlePasswordChange}
-                  required
-                  minLength="8"
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={saving}
-              >
-                {saving ? "Updating..." : "Update Password"}
-              </button>
-            </form>
-
-            <hr
-              style={{ margin: "2rem 0", borderColor: "var(--border-color)" }}
-            />
-
-            <div className="settings-toggle-row">
-              <div>
-                <h4 className="settings-toggle-title">
-                  Two-Factor Authentication
-                </h4>
-                <p className="settings-toggle-desc">
-                  Add an extra layer of security to your account
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={twoFactorEnabled}
-                onChange={handleTwoFactorToggle}
-                disabled={saving}
-                style={toggleSwitch(twoFactorEnabled)}
-              />
-            </div>
-          </motion.div>
-
-          {/* Preferences */}
-          <motion.div
-            className="card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-          >
-            <h3 className="card-title">Preferences</h3>
-            <div className="form-group">
-              <label className="form-label">Theme</label>
-              <select
-                className="form-control"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-              >
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="system">System Default</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Language</label>
-              <select
-                className="form-control"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-              >
-                <option value="english">English</option>
-                <option value="spanish">Spanish</option>
-                <option value="french">French</option>
-                <option value="german">German</option>
-                <option value="chinese">Chinese</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Currency</label>
-              <select
-                className="form-control"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-              >
-                <option value="usd">USD ($)</option>
-                <option value="eur">EUR (€)</option>
-                <option value="gbp">GBP (£)</option>
-                <option value="jpy">JPY (¥)</option>
-                <option value="cny">CNY (¥)</option>
-              </select>
-            </div>
-            <button
-              className="btn btn-primary"
-              onClick={(e) => handleSubmit(e, "Preferences")}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save Preferences"}
-            </button>
-          </motion.div>
-
-          {/* Notifications */}
-          <motion.div
-            className="card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.5 }}
-          >
-            <h3 className="card-title">Notifications</h3>
-
-            {[
-              {
-                key: "email",
-                label: "Email Notifications",
-                desc: "Receive updates and alerts via email",
-              },
-              {
-                key: "push",
-                label: "Push Notifications",
-                desc: "Receive notifications in your browser",
-              },
-              {
-                key: "sms",
-                label: "SMS Notifications",
-                desc: "Receive important alerts via SMS",
-              },
-            ].map(({ key, label, desc }) => (
-              <div key={key} className="settings-toggle-row">
-                <div>
-                  <h4 className="settings-toggle-title">{label}</h4>
-                  <p className="settings-toggle-desc">{desc}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={notifications[key]}
-                  onChange={() => handleNotificationToggle(key)}
-                  style={toggleSwitch(notifications[key])}
-                />
-              </div>
-            ))}
-
-            <button
-              className="btn btn-primary"
-              onClick={(e) => handleSubmit(e, "Notifications")}
-              disabled={saving}
-              style={{ marginTop: "1rem" }}
-            >
-              {saving ? "Saving..." : "Save Notification Settings"}
-            </button>
-          </motion.div>
+      <div className="page-header">
+        <div>
+          <span className="section-eyebrow">Preferences</span>
+          <h2>Settings</h2>
         </div>
+      </div>
 
-        {/* Danger Zone */}
-        <motion.div
-          className="card settings-danger-zone"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          <h3 className="card-title" style={{ color: "var(--danger-color)" }}>
-            Danger Zone
-          </h3>
-          <div className="settings-toggle-row">
-            <div>
-              <h4 className="settings-toggle-title">Delete Account</h4>
-              <p className="settings-toggle-desc">
-                Permanently delete your account and all associated data
-              </p>
-            </div>
-            <button
-              className="btn btn-danger"
-              onClick={() =>
-                showToast(
-                  "Account deletion requires confirmation. Please contact support.",
-                  "warning",
-                )
-              }
-            >
-              Delete Account
-            </button>
+      <div className="card settings-section">
+        <div className="section-title">
+          <h3>Appearance</h3>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Theme</p>
+            <p className="settings-row-desc">
+              Choose how QuantumVest looks on this device.
+            </p>
           </div>
-        </motion.div>
-      </motion.div>
+          <button className="btn btn-secondary" onClick={toggleTheme}>
+            {theme === "dark" ? "Switch to Light" : "Switch to Dark"}
+          </button>
+        </div>
+      </div>
+
+      <div className="card settings-section">
+        <div className="section-title">
+          <h3>Notifications</h3>
+          <span className="badge">Saved on this device</span>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Email digest</p>
+            <p className="settings-row-desc">
+              Weekly summary of portfolio performance.
+            </p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={prefs.emailDigest}
+              onChange={() => updatePref("emailDigest")}
+            />
+            <span className="switch-track" />
+          </label>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Price alerts</p>
+            <p className="settings-row-desc">
+              Notify me about significant moves in my watchlists.
+            </p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={prefs.priceAlerts}
+              onChange={() => updatePref("priceAlerts")}
+            />
+            <span className="switch-track" />
+          </label>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Transaction alerts</p>
+            <p className="settings-row-desc">
+              Notify me when a transaction is recorded on my portfolios.
+            </p>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={prefs.transactionAlerts}
+              onChange={() => updatePref("transactionAlerts")}
+            />
+            <span className="switch-track" />
+          </label>
+        </div>
+        <p className="field-hint">
+          These preferences are stored locally in your browser. The backend
+          doesn&apos;t yet send notification emails, so this controls in-app
+          behavior only.
+        </p>
+      </div>
+
+      <div className="card settings-section">
+        <div className="section-title">
+          <h3>Security</h3>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Password</p>
+            <p className="settings-row-desc">
+              Change your password from your Profile page.
+            </p>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate("/profile")}
+          >
+            Go to Profile
+          </button>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Two-factor authentication</p>
+            <p className="settings-row-desc">
+              {user?.two_factor_enabled
+                ? "Enabled on your account."
+                : "Not yet available — coming soon."}
+            </p>
+          </div>
+          <span
+            className={`badge ${user?.two_factor_enabled ? "badge-success" : ""}`}
+          >
+            {user?.two_factor_enabled ? "Enabled" : "Unavailable"}
+          </span>
+        </div>
+      </div>
+
+      <div className="card settings-section danger-zone">
+        <div className="section-title">
+          <h3>Session</h3>
+        </div>
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-title">Sign out</p>
+            <p className="settings-row-desc">
+              End your session on this device.
+            </p>
+          </div>
+          <button className="btn btn-danger" onClick={handleLogout}>
+            Sign Out
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

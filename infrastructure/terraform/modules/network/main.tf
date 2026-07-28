@@ -16,6 +16,13 @@ resource "aws_subnet" "public" {
   availability_zone       = var.availability_zones[count.index]
   map_public_ip_on_launch = true
 
+  lifecycle {
+    precondition {
+      condition     = length(var.availability_zones) >= length(var.public_subnet_cidrs)
+      error_message = "availability_zones must have at least as many entries as public_subnet_cidrs (got ${length(var.availability_zones)} AZs for ${length(var.public_subnet_cidrs)} public subnets)."
+    }
+  }
+
   tags = {
     Name                     = "${var.environment}-public-subnet-${count.index + 1}"
     Environment              = var.environment
@@ -28,6 +35,13 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
+
+  lifecycle {
+    precondition {
+      condition     = length(var.availability_zones) >= length(var.private_subnet_cidrs)
+      error_message = "availability_zones must have at least as many entries as private_subnet_cidrs (got ${length(var.availability_zones)} AZs for ${length(var.private_subnet_cidrs)} private subnets)."
+    }
+  }
 
   tags = {
     Name                              = "${var.environment}-private-subnet-${count.index + 1}"

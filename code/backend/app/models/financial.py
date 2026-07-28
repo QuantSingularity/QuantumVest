@@ -611,3 +611,12 @@ class WatchlistItem(db.Model):
     __table_args__ = (
         UniqueConstraint("watchlist_id", "asset_id", name="unique_watchlist_asset"),
     )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": str(self.id),
+            "watchlist_id": str(self.watchlist_id),
+            "asset_id": str(self.asset_id),
+            "notes": self.notes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

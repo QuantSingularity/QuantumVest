@@ -98,3 +98,54 @@ export const storage = {
     }
   },
 };
+
+// Fire a global toast notification (picked up by <ToastManager />)
+export const showToast = (message, type = "info", duration = 4000) => {
+  window.dispatchEvent(
+    new CustomEvent("show-toast", { detail: { message, type, duration } }),
+  );
+};
+
+// Extract a human-readable error message from an axios error / API response
+export const getErrorMessage = (
+  error,
+  fallback = "Something went wrong. Please try again.",
+) => {
+  return (
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    (error?.message === "Network Error"
+      ? "Can't reach the QuantumVest server. Check your connection and try again."
+      : null) ||
+    error?.message ||
+    fallback
+  );
+};
+
+// Format large numbers compactly (e.g. 12,345 -> 12.3K)
+export const formatCompactNumber = (value, locale = "en-US") => {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  return new Intl.NumberFormat(locale, {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+// Combine class names, skipping falsy values
+export const cx = (...classes) => classes.filter(Boolean).join(" ");
+
+// Initials from a name/username, for avatars
+export const getInitials = (nameOrUser) => {
+  if (!nameOrUser) return "QV";
+  if (typeof nameOrUser === "object") {
+    const { first_name, last_name, username } = nameOrUser;
+    if (first_name || last_name) {
+      return (
+        `${(first_name || "")[0] || ""}${(last_name || "")[0] || ""}`.toUpperCase() ||
+        "QV"
+      );
+    }
+    return (username || "QV").substring(0, 2).toUpperCase();
+  }
+  return String(nameOrUser).substring(0, 2).toUpperCase();
+};

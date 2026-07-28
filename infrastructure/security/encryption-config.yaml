@@ -3,7 +3,7 @@
 # Encryption at Rest
 encryption_at_rest:
   databases:
-    postgresql:
+    mysql:
       enabled: true
       algorithm: "AES-256-GCM"
       key_rotation_days: 30

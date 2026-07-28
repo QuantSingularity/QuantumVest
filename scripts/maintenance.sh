@@ -22,19 +22,36 @@ command_exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
+# Parses a postgresql://user:pass@host:port/dbname URL (as used by
+# code/backend/.env's DATABASE_URL) into DB_USER/DB_PASS/DB_HOST/DB_PORT/DB_NAME.
+# Returns non-zero if $1 isn't a postgresql:// URL.
+parse_postgres_uri() {
+  local uri="$1"
+  case "$uri" in
+    postgresql://*) ;;
+    *) return 1 ;;
+  esac
+  DB_USER=$(echo "$uri" | sed -E 's#postgresql://([^:]+):.*#\1#')
+  DB_PASS=$(echo "$uri" | sed -E 's#postgresql://[^:]+:([^@]+)@.*#\1#')
+  DB_HOST=$(echo "$uri" | sed -E 's#postgresql://[^@]+@([^:/]+).*#\1#')
+  DB_PORT=$(echo "$uri" | sed -E 's#postgresql://[^@]+@[^:/]+:([0-9]+).*#\1#')
+  DB_NAME=$(echo "$uri" | sed -E 's#.*/([^/?]+)(\?.*)?$#\1#')
+  [ -n "$DB_PORT" ] || DB_PORT=5432
+}
+
 # Function to rotate logs
 rotate_logs() {
   echo -e "\n${BLUE}Rotating logs...${NC}"
 
-  # Create logs directory if it doesn't exist
-  if [ ! -d "logs" ]; then
-    mkdir -p logs
-  fi
+  # Create logs directories if they don't exist (including the archive
+  # directory — the "compress"/"delete old" steps below run unconditionally
+  # even when no log files were found to rotate this time around).
+  mkdir -p logs logs/archive
 
   # Check for log files in common locations
   LOG_FILES=(
     "code/backend/logs/*.log"
-    "code/frontend/logs/*.log"
+    "web-frontend/logs/*.log"
     "logs/*.log"
   )
 
@@ -52,12 +69,8 @@ rotate_logs() {
       # Create timestamp
       timestamp=$(date +"%Y%m%d-%H%M%S")
 
-      # Create archive directory if it doesn't exist
-      archive_dir="logs/archive"
-      mkdir -p "$archive_dir"
-
       # Copy log file to archive with timestamp
-      cp "$log_file" "$archive_dir/${base_name%.*}-$timestamp.${base_name##*.}"
+      cp "$log_file" "logs/archive/${base_name%.*}-$timestamp.${base_name##*.}"
 
       # Clear original log file
       echo "" > "$log_file"
@@ -89,19 +102,13 @@ backup_data() {
   # Backup database
   echo -e "${BLUE}Backing up database...${NC}"
 
-  # Extract database connection info from .env file
-  if [ -f ".env" ]; then
-    DB_URI=$(grep -oP 'DB_URI="\K[^"]*' .env)
+  # The application reads its DB connection string from code/backend/.env's
+  # DATABASE_URL (see config.py) — not a top-level .env, which nothing in
+  # the app actually consumes.
+  if [ -f "code/backend/.env" ]; then
+    DB_URL=$(grep -m1 '^DATABASE_URL=' code/backend/.env | cut -d= -f2-)
 
-    if [ -n "$DB_URI" ]; then
-      # Parse DB_URI to extract components
-      DB_USER=$(echo "$DB_URI" | grep -oP 'postgresql://\K[^:]*')
-      DB_PASS=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:\K[^@]*')
-      DB_HOST=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:[^@]*@\K[^:]*')
-      DB_PORT=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:[^@]*@[^:]*:\K[^/]*')
-      DB_NAME=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:[^@]*@[^:]*:[^/]*/\K[^"]*')
-
-      # Backup database using pg_dump
+    if [ -n "$DB_URL" ] && parse_postgres_uri "$DB_URL"; then
       if command_exists pg_dump; then
         PGPASSWORD="$DB_PASS" pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f "$BACKUP_DIR/db-$TIMESTAMP.sql"
 
@@ -113,10 +120,10 @@ backup_data() {
         echo -e "${YELLOW}pg_dump not found. Skipping database backup.${NC}"
       fi
     else
-      echo -e "${YELLOW}Could not extract database connection info from .env file.${NC}"
+      echo -e "${YELLOW}DATABASE_URL in code/backend/.env is not a postgresql:// URL (e.g. sqlite). Skipping pg_dump backup.${NC}"
     fi
   else
-    echo -e "${YELLOW}.env file not found. Skipping database backup.${NC}"
+    echo -e "${YELLOW}code/backend/.env not found. Skipping database backup.${NC}"
   fi
 
   # Backup code and configuration
@@ -128,12 +135,15 @@ backup_data() {
     "docs"
     ".github"
     "infrastructure"
+    "web-frontend"
     "mobile-frontend"
   )
 
   # Create a list of files to backup
   BACKUP_FILES=(
-    ".env"
+    "code/backend/.env"
+    "web-frontend/.env"
+    "infrastructure/.env"
     "docker-compose.yml"
     "README.md"
   )
@@ -144,14 +154,14 @@ backup_data() {
   # Copy directories
   for dir in "${BACKUP_DIRS[@]}"; do
     if [ -d "$dir" ]; then
-      mkdir -p "$TEMP_DIR/$dir"
-      cp -r "$dir" "$TEMP_DIR/$(dirname "$dir")"
+      cp -r "$dir" "$TEMP_DIR/"
     fi
   done
 
-  # Copy files
+  # Copy files (preserving their relative directory structure)
   for file in "${BACKUP_FILES[@]}"; do
     if [ -f "$file" ]; then
+      mkdir -p "$TEMP_DIR/$(dirname "$file")"
       cp "$file" "$TEMP_DIR/$file"
     fi
   done
@@ -186,54 +196,67 @@ check_health() {
   HEALTH_REPORT="$HEALTH_DIR/health-$TIMESTAMP.txt"
 
   # Write header to health report
-  echo "QuantumVest Health Check Report" > "$HEALTH_REPORT"
-  echo "Date: $(date)" >> "$HEALTH_REPORT"
-  echo "----------------------------------------" >> "$HEALTH_REPORT"
+  {
+    echo "QuantumVest Health Check Report"
+    echo "Date: $(date)"
+    echo "----------------------------------------"
+  } > "$HEALTH_REPORT"
 
   # Check disk usage
   echo -e "${BLUE}Checking disk usage...${NC}"
-  echo -e "\nDisk Usage:" >> "$HEALTH_REPORT"
-  df -h >> "$HEALTH_REPORT"
+  {
+    echo ""
+    echo "Disk Usage:"
+    df -h
+  } >> "$HEALTH_REPORT"
 
   # Check memory usage
   echo -e "${BLUE}Checking memory usage...${NC}"
-  echo -e "\nMemory Usage:" >> "$HEALTH_REPORT"
-  free -h >> "$HEALTH_REPORT"
+  {
+    echo ""
+    echo "Memory Usage:"
+    free -h
+  } >> "$HEALTH_REPORT"
 
   # Check CPU usage
   echo -e "${BLUE}Checking CPU usage...${NC}"
-  echo -e "\nCPU Usage:" >> "$HEALTH_REPORT"
-  top -bn1 | head -20 >> "$HEALTH_REPORT"
+  {
+    echo ""
+    echo "CPU Usage:"
+    top -bn1 | head -20
+  } >> "$HEALTH_REPORT"
 
-  # Check running processes
+  # Check running processes. The trailing "|| true" matters: if none of
+  # these processes happen to be running (e.g. a minimal/CI environment),
+  # the final grep in the pipeline returns 1, which would otherwise abort
+  # the whole script under `set -e`.
   echo -e "${BLUE}Checking running processes...${NC}"
-  echo -e "\nRunning Processes:" >> "$HEALTH_REPORT"
-  ps aux | grep -E 'python|node|nginx|postgres|redis' | grep -v grep >> "$HEALTH_REPORT"
+  {
+    echo ""
+    echo "Running Processes:"
+    ps aux | grep -E 'python|node|nginx|postgres|redis|mysql' | grep -v grep || echo "(none found)"
+  } >> "$HEALTH_REPORT"
 
   # Check Docker containers if Docker is installed
   if command_exists docker; then
     echo -e "${BLUE}Checking Docker containers...${NC}"
-    echo -e "\nDocker Containers:" >> "$HEALTH_REPORT"
-    docker ps -a >> "$HEALTH_REPORT"
+    {
+      echo ""
+      echo "Docker Containers:"
+      docker ps -a
+    } >> "$HEALTH_REPORT"
   fi
 
   # Check database connection
   echo -e "${BLUE}Checking database connection...${NC}"
   echo -e "\nDatabase Connection:" >> "$HEALTH_REPORT"
 
-  # Extract database connection info from .env file
-  if [ -f ".env" ]; then
-    DB_URI=$(grep -oP 'DB_URI="\K[^"]*' .env)
+  # See the note in backup_data(): the real DB config lives in
+  # code/backend/.env's DATABASE_URL.
+  if [ -f "code/backend/.env" ]; then
+    DB_URL=$(grep -m1 '^DATABASE_URL=' code/backend/.env | cut -d= -f2-)
 
-    if [ -n "$DB_URI" ]; then
-      # Parse DB_URI to extract components
-      DB_USER=$(echo "$DB_URI" | grep -oP 'postgresql://\K[^:]*')
-      DB_PASS=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:\K[^@]*')
-      DB_HOST=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:[^@]*@\K[^:]*')
-      DB_PORT=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:[^@]*@[^:]*:\K[^/]*')
-      DB_NAME=$(echo "$DB_URI" | grep -oP 'postgresql://[^:]*:[^@]*@[^:]*:[^/]*/\K[^"]*')
-
-      # Check database connection
+    if [ -n "$DB_URL" ] && parse_postgres_uri "$DB_URL"; then
       if command_exists psql; then
         if PGPASSWORD="$DB_PASS" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" > /dev/null 2>&1; then
           echo "Database connection successful." >> "$HEALTH_REPORT"
@@ -244,10 +267,10 @@ check_health() {
         echo "psql not found. Could not check database connection." >> "$HEALTH_REPORT"
       fi
     else
-      echo "Could not extract database connection info from .env file." >> "$HEALTH_REPORT"
+      echo "DATABASE_URL is not a postgresql:// URL (e.g. sqlite) — skipping connection check." >> "$HEALTH_REPORT"
     fi
   else
-    echo ".env file not found. Could not check database connection." >> "$HEALTH_REPORT"
+    echo "code/backend/.env not found. Could not check database connection." >> "$HEALTH_REPORT"
   fi
 
   # Check API endpoints
@@ -256,12 +279,19 @@ check_health() {
 
   # Check if curl is installed
   if command_exists curl; then
-    # Check backend API
-    if curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health 2>/dev/null | grep -q "200"; then
-      echo "Backend API is up and running." >> "$HEALTH_REPORT"
-    else
-      echo "Backend API is not responding." >> "$HEALTH_REPORT"
-    fi
+    # Check backend API. The health route is served under the /api/v1
+    # blueprint prefix, not at the bare path. Direct-mode deploys (gunicorn
+    # --bind 0.0.0.0:8000) and Docker-mode deploys (infra compose maps
+    # backend to 8080) use different ports, so try both.
+    backend_ok="false"
+    for port in 8000 8080; do
+      if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${port}/api/v1/health" 2>/dev/null | grep -q "200"; then
+        echo "Backend API is up and running (port ${port})." >> "$HEALTH_REPORT"
+        backend_ok="true"
+        break
+      fi
+    done
+    [ "$backend_ok" = "true" ] || echo "Backend API is not responding on port 8000 or 8080." >> "$HEALTH_REPORT"
 
     # Check frontend
     if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 2>/dev/null | grep -q "200"; then
@@ -279,20 +309,23 @@ check_health() {
   echo -e "\n${BLUE}Health Check Summary:${NC}"
   echo -e "${BLUE}----------------------------------------${NC}"
 
-  # Check disk usage warning
-  disk_usage=$(df -h | grep -E '/$' | awk '{print $5}' | sed 's/%//')
-  if [ "$disk_usage" -gt 90 ]; then
+  # Check disk usage warning. Targeting "/" explicitly (rather than
+  # grepping for a line ending in "/") avoids matching zero or multiple
+  # lines in containers with several mount points, which would otherwise
+  # make the numeric comparison below error out.
+  disk_usage=$(df -h / | tail -1 | awk '{print $5}' | tr -d '%')
+  if [ -n "$disk_usage" ] && [ "$disk_usage" -gt 90 ] 2>/dev/null; then
     echo -e "${RED}WARNING: Disk usage is high ($disk_usage%).${NC}"
   else
-    echo -e "${GREEN}Disk usage is normal ($disk_usage%).${NC}"
+    echo -e "${GREEN}Disk usage is normal (${disk_usage:-unknown}%).${NC}"
   fi
 
   # Check memory usage warning
   memory_usage=$(free | grep Mem | awk '{print int($3/$2 * 100)}')
-  if [ "$memory_usage" -gt 90 ]; then
+  if [ -n "$memory_usage" ] && [ "$memory_usage" -gt 90 ] 2>/dev/null; then
     echo -e "${RED}WARNING: Memory usage is high ($memory_usage%).${NC}"
   else
-    echo -e "${GREEN}Memory usage is normal ($memory_usage%).${NC}"
+    echo -e "${GREEN}Memory usage is normal (${memory_usage:-unknown}%).${NC}"
   fi
 
   # Check if any critical services are down

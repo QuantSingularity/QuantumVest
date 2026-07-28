@@ -1,240 +1,267 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, FlatList, Alert } from "react-native";
+import React, { useCallback, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from "react-native";
 import {
   Appbar,
-  Card,
+  Button,
+  Chip,
+  Dialog,
+  FAB,
+  Portal,
   Text,
   TextInput,
-  Button,
-  ActivityIndicator,
-  List,
-  Divider,
   useTheme,
-  IconButton,
-  Dialog,
-  Portal,
 } from "react-native-paper";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios"; // Need axios for simple price endpoint
+import { useFocusEffect } from "@react-navigation/native";
+import { watchlistAPI } from "../services/api";
+import { handleApiError } from "../utils/errorHandler";
+import LoadingSpinner from "../components/LoadingSpinner";
+import EmptyState from "../components/EmptyState";
+import AssetSearchInput from "../components/AssetSearchInput";
 
-const COINGECKO_API_BASE_URL = "https://api.coingecko.com/api/v3";
-const WATCHLIST_STORAGE_KEY = "@QuantumVest:watchlist";
-
-// Function to get simple price data from CoinGecko
-const getSimplePrice = async (coinIds) => {
-  if (!coinIds || coinIds.length === 0) {
-    return {};
-  }
-  try {
-    const response = await axios.get(`${COINGECKO_API_BASE_URL}/simple/price`, {
-      params: {
-        ids: coinIds.join(","),
-        vs_currencies: "usd",
-      },
-      headers: {
-        Accept: "application/json",
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching simple price:", error);
-    // Return empty object or throw error based on desired handling
-    return {};
-  }
-};
-
-const WatchlistScreen = ({ navigation }) => {
-  const [watchlist, setWatchlist] = useState([]);
-  const [watchlistData, setWatchlistData] = useState({}); // Store price data keyed by coinId
+const WatchlistScreen = () => {
+  const theme = useTheme();
+  const [watchlists, setWatchlists] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [activeDetail, setActiveDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [dialogVisible, setDialogVisible] = useState(false);
-  const [newCoinId, setNewCoinId] = useState("");
-  const theme = useTheme();
+  const [error, setError] = useState("");
 
-  const loadWatchlist = async () => {
+  const [createVisible, setCreateVisible] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const loadList = useCallback(async (isRefresh = false, selectId) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
-      const storedWatchlist = await AsyncStorage.getItem(WATCHLIST_STORAGE_KEY);
-      if (storedWatchlist !== null) {
-        setWatchlist(JSON.parse(storedWatchlist));
+      const { data } = await watchlistAPI.list();
+      if (data.success) {
+        setWatchlists(data.watchlists);
+        setActiveId(selectId || data.watchlists[0]?.id || null);
       }
-    } catch (e) {
-      console.error("Failed to load watchlist.", e);
-      Alert.alert("Error", "Could not load watchlist from storage.");
-    }
-  };
-
-  const saveWatchlist = async (newWatchlist) => {
-    try {
-      await AsyncStorage.setItem(
-        WATCHLIST_STORAGE_KEY,
-        JSON.stringify(newWatchlist),
-      );
-    } catch (e) {
-      console.error("Failed to save watchlist.", e);
-      Alert.alert("Error", "Could not save watchlist changes.");
-    }
-  };
-
-  const fetchWatchlistData = useCallback(async (currentWatchlist) => {
-    if (currentWatchlist.length === 0) {
-      setWatchlistData({});
+    } catch (err) {
+      setError(handleApiError(err, "Couldn't load your watchlists."));
+    } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  }, []);
+
+  const loadDetail = useCallback(async (watchlistId) => {
+    if (!watchlistId) {
+      setActiveDetail(null);
       return;
     }
-    setLoading(true);
-    const prices = await getSimplePrice(currentWatchlist);
-    setWatchlistData(prices);
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useEffect(() => {
-    const initialize = async () => {
-      await loadWatchlist();
-      // Fetch data after loading the watchlist state
-    };
-    initialize();
-  }, []);
-
-  // Fetch data whenever the watchlist state changes
-  useEffect(() => {
-    fetchWatchlistData(watchlist);
-  }, [watchlist, fetchWatchlistData]);
-
-  const handleAddCoin = async () => {
-    const coinIdToAdd = newCoinId.trim().toLowerCase();
-    if (!coinIdToAdd) {
+    try {
+      const { data } = await watchlistAPI.get(watchlistId);
+      if (data.success) setActiveDetail(data.watchlist);
+    } catch (err) {
       Alert.alert(
-        "Input Error",
-        "Please enter a valid CoinGecko coin ID (e.g., bitcoin, ethereum).",
+        "Error",
+        handleApiError(err, "Couldn't load this watchlist."),
       );
-      return;
     }
-    if (watchlist.includes(coinIdToAdd)) {
-      Alert.alert("Duplicate", `${coinIdToAdd} is already in your watchlist.`);
-      setNewCoinId("");
-      setDialogVisible(false);
-      return;
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadList();
+    }, [loadList]),
+  );
+  useFocusEffect(
+    useCallback(() => {
+      loadDetail(activeId);
+    }, [activeId, loadDetail]),
+  );
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    setCreating(true);
+    try {
+      const { data } = await watchlistAPI.create({ name: newName.trim() });
+      if (data.success) {
+        setCreateVisible(false);
+        setNewName("");
+        loadList(false, data.watchlist.id);
+      }
+    } catch (err) {
+      Alert.alert("Error", handleApiError(err, "Could not create watchlist."));
+    } finally {
+      setCreating(false);
     }
-
-    // Optional: Verify coin ID exists via CoinGecko API before adding
-    // (Skipping for brevity, assuming user enters valid IDs)
-
-    const newWatchlist = [...watchlist, coinIdToAdd];
-    setWatchlist(newWatchlist);
-    await saveWatchlist(newWatchlist);
-    setNewCoinId("");
-    setDialogVisible(false);
-    // Data will refetch due to useEffect dependency on watchlist
   };
 
-  const handleRemoveCoin = async (coinIdToRemove) => {
-    const newWatchlist = watchlist.filter((id) => id !== coinIdToRemove);
-    setWatchlist(newWatchlist);
-    await saveWatchlist(newWatchlist);
-    // Data will refetch due to useEffect dependency on watchlist
+  const handleAddAsset = async (asset) => {
+    try {
+      const { data } = await watchlistAPI.addItem(activeId, {
+        asset_symbol: asset.symbol,
+      });
+      if (data.success) {
+        loadDetail(activeId);
+        loadList(false, activeId);
+      } else {
+        Alert.alert("Error", data.error || "Could not add asset");
+      }
+    } catch (err) {
+      if (err?.response?.status === 409) {
+        Alert.alert(
+          "Already added",
+          `${asset.symbol} is already in this watchlist.`,
+        );
+      } else {
+        Alert.alert("Error", handleApiError(err, "Could not add asset."));
+      }
+    }
   };
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchWatchlistData(watchlist);
-  }, [watchlist, fetchWatchlistData]);
-
-  const renderWatchlistItem = ({ item: coinId }) => {
-    const priceData = watchlistData[coinId];
-    const currentPrice = priceData?.usd ?? "Loading...";
-
-    return (
-      <Card style={styles.card} elevation={1}>
-        <Card.Title
-          title={coinId.charAt(0).toUpperCase() + coinId.slice(1)} // Capitalize
-          subtitle={`Current Price: $${currentPrice}`}
-          subtitleStyle={styles.priceText}
-          left={(props) => <List.Icon {...props} icon="currency-usd" />} // Generic icon
-          right={(props) => (
-            <IconButton
-              {...props}
-              icon="delete"
-              onPress={() => handleRemoveCoin(coinId)}
-            />
-          )}
-        />
-      </Card>
-    );
+  const handleRemoveItem = async (item) => {
+    try {
+      await watchlistAPI.removeItem(activeId, item.id);
+      loadDetail(activeId);
+      loadList(false, activeId);
+    } catch (err) {
+      Alert.alert("Error", handleApiError(err, "Could not remove asset."));
+    }
   };
+
+  if (loading) return <LoadingSpinner message="Loading watchlists..." />;
 
   return (
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       <Appbar.Header>
-        {navigation.canGoBack() && (
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        )}
-        <Appbar.Content title="My Watchlist" />
-        <Appbar.Action
-          icon="plus"
-          onPress={() => setDialogVisible(true)}
-          testID="add-coin-button"
-        />
-        <Appbar.Action
-          icon="refresh"
-          onPress={onRefresh}
-          disabled={loading || refreshing}
-          testID="refresh-watchlist-button"
-        />
+        <Appbar.Content title="Watchlist" />
       </Appbar.Header>
 
-      {loading && watchlist.length === 0 ? (
-        <ActivityIndicator
-          animating={true}
-          size="large"
-          style={styles.loader}
+      {!!error && (
+        <Text style={{ color: theme.colors.error, padding: 16 }}>{error}</Text>
+      )}
+
+      {watchlists.length === 0 ? (
+        <EmptyState
+          icon="star-outline"
+          title="No watchlists yet"
+          message="Create a watchlist to start tracking assets."
+          actionLabel="Create Watchlist"
+          onAction={() => setCreateVisible(true)}
         />
       ) : (
-        <FlatList
-          data={watchlist}
-          renderItem={renderWatchlistItem}
-          keyExtractor={(item) => item}
-          style={styles.list}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>
-              Your watchlist is empty. Add coins using the '+' button.
-            </Text>
-          }
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          ItemSeparatorComponent={() => (
-            <Divider style={{ marginVertical: 5 }} />
-          )}
-        />
+        <View style={{ flex: 1 }}>
+          <FlatList
+            horizontal
+            data={watchlists}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.tabRow}
+            showsHorizontalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <Chip
+                selected={item.id === activeId}
+                onPress={() => setActiveId(item.id)}
+                style={styles.tabChip}
+              >
+                {item.name} ({item.items_count})
+              </Chip>
+            )}
+          />
+
+          <FlatList
+            data={activeDetail?.items || []}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => loadList(true, activeId)}
+              />
+            }
+            ListHeaderComponent={
+              <AssetSearchInput
+                onSelect={handleAddAsset}
+                placeholder="Add an asset (e.g. AAPL, BTC)…"
+              />
+            }
+            ListEmptyComponent={
+              <Text
+                style={{
+                  color: theme.colors.onSurfaceVariant,
+                  textAlign: "center",
+                  marginTop: 24,
+                }}
+              >
+                No assets yet — search above to add one.
+              </Text>
+            }
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.itemRow,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.outline,
+                  },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{ color: theme.colors.onSurface, fontWeight: "700" }}
+                  >
+                    {item.asset?.symbol}
+                  </Text>
+                  <Text
+                    style={{
+                      color: theme.colors.onSurfaceVariant,
+                      fontSize: 12,
+                    }}
+                  >
+                    {item.asset?.name}
+                  </Text>
+                </View>
+                <Button compact onPress={() => handleRemoveItem(item)}>
+                  Remove
+                </Button>
+              </View>
+            )}
+          />
+        </View>
       )}
+
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        onPress={() => setCreateVisible(true)}
+      />
 
       <Portal>
         <Dialog
-          visible={dialogVisible}
-          onDismiss={() => setDialogVisible(false)}
+          visible={createVisible}
+          onDismiss={() => setCreateVisible(false)}
         >
-          <Dialog.Title>Add Coin to Watchlist</Dialog.Title>
+          <Dialog.Title>New Watchlist</Dialog.Title>
           <Dialog.Content>
             <TextInput
-              label="CoinGecko Coin ID"
-              value={newCoinId}
-              onChangeText={setNewCoinId}
               mode="outlined"
-              autoCapitalize="none"
-              placeholder="e.g., bitcoin, ethereum"
+              label="Name"
+              value={newName}
+              onChangeText={setNewName}
             />
-            <Text style={styles.dialogHelperText}>
-              Find IDs on CoinGecko.com
-            </Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setDialogVisible(false)}>Cancel</Button>
-            <Button onPress={handleAddCoin}>Add</Button>
+            <Button onPress={() => setCreateVisible(false)}>Cancel</Button>
+            <Button
+              onPress={handleCreate}
+              loading={creating}
+              disabled={creating}
+            >
+              Create
+            </Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -243,38 +270,19 @@ const WatchlistScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loader: {
-    flex: 1,
-    justifyContent: "center",
+  container: { flex: 1 },
+  tabRow: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  tabChip: { marginRight: 8 },
+  list: { padding: 16, gap: 10 },
+  itemRow: {
+    flexDirection: "row",
     alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
   },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 15,
-  },
-  card: {
-    marginBottom: 10,
-  },
-  priceText: {
-    fontSize: 16,
-    // color: theme.colors.primary // Example using theme
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 50,
-    fontSize: 16,
-    color: "grey",
-  },
-  dialogHelperText: {
-    fontSize: 12,
-    color: "grey",
-    marginTop: 5,
-  },
+  fab: { position: "absolute", right: 20, bottom: 20 },
 });
 
 export default WatchlistScreen;

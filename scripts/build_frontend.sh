@@ -14,7 +14,7 @@ echo "==================================================="
 echo " Building QuantumVest Web Frontend"
 echo "==================================================="
 
-FRONTEND_DIR="${PROJECT_DIR}/code/web-frontend"
+FRONTEND_DIR="${PROJECT_DIR}/web-frontend"
 
 if [ ! -d "${FRONTEND_DIR}" ]; then
     echo "Error: Frontend directory not found at ${FRONTEND_DIR}. Cannot build frontend." >&2

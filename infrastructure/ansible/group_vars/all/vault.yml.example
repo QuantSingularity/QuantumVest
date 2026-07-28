@@ -1,0 +1,13 @@
+---
+# Copy to vault.yml (in this same group_vars/all/ directory) and encrypt it —
+# never commit plaintext secrets:
+#   cp vault.yml.example vault.yml
+#   ansible-vault encrypt vault.yml
+#
+# Edit later with:
+#   ansible-vault edit group_vars/all/vault.yml
+#
+# group_vars/all/vars.yml references these via db_root_password/db_password.
+
+vault_mysql_root_password: "CHANGE_ME_generate_with_openssl_rand_-base64_24"
+vault_db_password: "CHANGE_ME_generate_with_openssl_rand_-base64_24"

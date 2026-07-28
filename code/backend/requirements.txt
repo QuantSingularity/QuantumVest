@@ -8,6 +8,16 @@ Flask-Caching==2.1.0
 # Database
 SQLAlchemy==2.0.21
 alembic==1.12.0
+# Driver for MySQL/MariaDB — required because docker-compose.yml, the
+# Kubernetes StatefulSet, and the Terraform RDS module all provision MySQL,
+# but SQLAlchemy ships no database driver of its own. PyMySQL is pure-Python
+# (no system libmysqlclient/build toolchain needed), used via the
+# "mysql+pymysql://" URL scheme.
+PyMySQL==1.1.0
+
+# Metrics
+# Backs the /metrics endpoint scraped by infrastructure/monitoring/*.
+prometheus-client==0.20.0
 
 # Auth & security
 PyJWT==2.8.0

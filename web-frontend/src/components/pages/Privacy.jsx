@@ -1,70 +1,52 @@
 import React from "react";
-import { motion } from "framer-motion";
-import "../../styles/NotFound.css";
+import "../../styles/StaticPages.css";
 
-const sections = [
+const SECTIONS = [
   {
     title: "Information We Collect",
-    body: "We collect information you provide directly (name, email, portfolio data) and information generated through your use of our platform (analytics, usage patterns).",
+    body: "We collect information you provide directly (name, email, portfolio data) and information generated through your use of the platform (usage analytics, session data).",
   },
   {
     title: "How We Use Your Information",
-    body: "We use collected data to provide and improve our services, generate AI-powered predictions, personalize your experience, and communicate important updates.",
+    body: "We use collected data to provide and improve the service, run risk and portfolio analytics you request, personalize your experience, and communicate important updates.",
   },
   {
     title: "Data Security",
-    body: "We employ industry-standard encryption (AES-256) and secure authentication protocols. All portfolio data is stored in compliance with SOC 2 Type II standards.",
+    body: "Passwords are hashed and access to your account is protected by token-based authentication. We recommend using a strong, unique password for your QuantumVest account.",
   },
   {
-    title: "Blockchain Data",
-    body: "Blockchain transaction data referenced by QuantumVest is publicly available on-chain. We do not store private keys or wallet credentials.",
+    title: "Market & Asset Data",
+    body: "Asset and pricing data shown in the app is sourced for informational purposes. QuantumVest does not execute trades on your behalf.",
   },
   {
     title: "Third-Party Services",
-    body: "We may share anonymized, aggregated data with analytics partners. We never sell personal information to third parties for marketing purposes.",
+    body: "We do not sell personal information to third parties for marketing purposes.",
   },
   {
     title: "Your Rights",
-    body: "You have the right to access, correct, or delete your personal data at any time. Contact us at privacy@quantumvest.io to exercise these rights.",
+    body: "You can review and update your profile information at any time from your account settings, or contact us to request data deletion.",
   },
 ];
 
 const Privacy = () => (
-  <div className="profile-page">
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      <h1 className="section-title">Privacy Policy</h1>
-      <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>
-        Last updated: January 1, 2025
-      </p>
-      <div className="card" style={{ maxWidth: 760, margin: "0 auto" }}>
-        {sections.map(({ title, body }) => (
-          <div key={title} style={{ marginBottom: 28 }}>
-            <h3 style={{ marginBottom: 8 }}>{title}</h3>
-            <p style={{ color: "var(--text-secondary)", margin: 0 }}>{body}</p>
+  <div className="static-page">
+    <div className="container static-page-inner">
+      <h1>Privacy Policy</h1>
+      <p className="static-page-meta">Last updated: January 1, 2026</p>
+      <div className="card static-page-card">
+        {SECTIONS.map(({ title, body }) => (
+          <div key={title} className="static-page-section">
+            <h3>{title}</h3>
+            <p>{body}</p>
           </div>
         ))}
-        <hr
-          style={{
-            margin: "24px 0",
-            border: "none",
-            borderTop: "1px solid var(--border-color)",
-          }}
-        />
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+        <hr className="divider" />
+        <p className="text-secondary" style={{ fontSize: "0.9rem" }}>
           Questions? Email us at{" "}
-          <a
-            href="mailto:privacy@quantumvest.io"
-            style={{ color: "var(--primary-color)" }}
-          >
-            privacy@quantumvest.io
-          </a>
+          <a href="mailto:privacy@quantumvest.io">privacy@quantumvest.io</a>
         </p>
       </div>
-    </motion.div>
+    </div>
   </div>
 );
 

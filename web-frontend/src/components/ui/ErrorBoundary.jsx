@@ -32,7 +32,9 @@ class ErrorBoundary extends React.Component {
           <div className="error-container">
             <div className="error-icon">⚠️</div>
             <h2>Something went wrong</h2>
-            <p>We're sorry, but there was an error loading this component.</p>
+            <p>
+              We&apos;re sorry, but there was an error loading this component.
+            </p>
             <button
               className="retry-button"
               onClick={() => {
@@ -58,7 +60,7 @@ class ErrorBoundary extends React.Component {
                 </summary>
                 <p
                   style={{
-                    color: "var(--danger-color)",
+                    color: "var(--danger)",
                     fontFamily: "monospace",
                     fontSize: "0.85rem",
                   }}

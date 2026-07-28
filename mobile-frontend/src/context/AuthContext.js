@@ -1,13 +1,19 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-import Config from "../config/config";
+import {
+  authAPI,
+  setSessionExpiredHandler,
+  AUTH_STORAGE_KEYS,
+} from "../services/api";
 
 const AuthContext = createContext(null);
-
-const AUTH_TOKEN_KEY = "@QuantumVest:auth_token";
-const REFRESH_TOKEN_KEY = "@QuantumVest:refresh_token";
-const USER_DATA_KEY = "@QuantumVest:user_data";
+const { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } = AUTH_STORAGE_KEYS;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -15,80 +21,88 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load saved auth state on mount
-  useEffect(() => {
-    loadAuthState();
+  const clearAuthState = useCallback(async () => {
+    setUser(null);
+    setToken(null);
+    await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY]);
   }, []);
 
-  const loadAuthState = async () => {
-    try {
-      const [savedToken, savedUser] = await Promise.all([
-        AsyncStorage.getItem(AUTH_TOKEN_KEY),
-        AsyncStorage.getItem(USER_DATA_KEY),
-      ]);
+  // Verify the stored session against the backend on launch, so an
+  // expired/invalid token doesn't silently render protected screens.
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const [savedToken, savedUser] = await Promise.all([
+          AsyncStorage.getItem(TOKEN_KEY),
+          AsyncStorage.getItem(USER_KEY),
+        ]);
 
-      if (savedToken && savedUser) {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        if (!savedToken) {
+          setLoading(false);
+          return;
+        }
+
+        // Optimistically show cached user while we verify in the background.
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+          setToken(savedToken);
+        }
+
+        const { data } = await authAPI.getProfile();
+        if (data.success) {
+          setUser(data.user);
+          setToken(savedToken);
+          await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        } else {
+          await clearAuthState();
+        }
+      } catch (err) {
+        await clearAuthState();
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to load auth state:", error);
-    } finally {
-      setLoading(false);
-    }
+    };
+    bootstrap();
+  }, [clearAuthState]);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      clearAuthState();
+    });
+    return () => setSessionExpiredHandler(null);
+  }, [clearAuthState]);
+
+  const persistSession = async (data) => {
+    setToken(data.access_token);
+    setUser(data.user);
+    await AsyncStorage.multiSet([
+      [TOKEN_KEY, data.access_token],
+      [REFRESH_TOKEN_KEY, data.refresh_token],
+      [USER_KEY, JSON.stringify(data.user)],
+    ]);
   };
 
-  const saveAuthState = async (authToken, userData) => {
-    try {
-      await Promise.all([
-        AsyncStorage.setItem(AUTH_TOKEN_KEY, authToken),
-        AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(userData)),
-      ]);
-    } catch (error) {
-      console.error("Failed to save auth state:", error);
-    }
-  };
-
-  const clearAuthState = async () => {
-    try {
-      await Promise.all([
-        AsyncStorage.removeItem(AUTH_TOKEN_KEY),
-        AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
-        AsyncStorage.removeItem(USER_DATA_KEY),
-      ]);
-    } catch (error) {
-      console.error("Failed to clear auth state:", error);
-    }
-  };
-
-  const login = async (username, password) => {
+  const login = async (identifier, password) => {
     try {
       setLoading(true);
       setError(null);
-
-      const response = await axios.post(`${Config.API_BASE_URL}/auth/login`, {
-        username,
+      const { data } = await authAPI.login({
+        username: identifier,
+        email: identifier,
         password,
       });
 
-      if (response.data.success) {
-        const { access_token, refresh_token, user: userData } = response.data;
-        setToken(access_token);
-        setUser(userData);
-        await saveAuthState(access_token, userData);
-        if (refresh_token) {
-          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
-        }
-        return { success: true };
-      } else {
-        setError(response.data.error || "Login failed");
-        return { success: false, error: response.data.error };
+      if (data.success) {
+        await persistSession(data);
+        return { success: true, user: data.user };
       }
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.error || "Network error. Please try again.";
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
+      setError(data.error || "Login failed");
+      return { success: false, error: data.error || "Login failed" };
+    } catch (err) {
+      const message =
+        err.response?.data?.error || "Network error. Please try again.";
+      setError(message);
+      return { success: false, error: message };
     } finally {
       setLoading(false);
     }
@@ -98,58 +112,70 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
+      const { data } = await authAPI.register(userData);
 
-      const response = await axios.post(
-        `${Config.API_BASE_URL}/auth/register`,
-        userData,
-      );
-
-      if (response.data.success) {
-        // Auto-login after registration
-        return await login(userData.username, userData.password);
-      } else {
-        setError(response.data.error || "Registration failed");
-        return { success: false, error: response.data.error };
+      if (data.success) {
+        await persistSession(data);
+        return { success: true, user: data.user };
       }
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.error || "Network error. Please try again.";
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
+      setError(data.error || "Registration failed");
+      return { success: false, error: data.error || "Registration failed" };
+    } catch (err) {
+      const message =
+        err.response?.data?.error || "Network error. Please try again.";
+      setError(message);
+      return { success: false, error: message };
     } finally {
       setLoading(false);
     }
   };
 
   const logout = async () => {
-    setUser(null);
-    setToken(null);
-    await clearAuthState();
+    try {
+      if (token) await authAPI.logout();
+    } catch (err) {
+      // Best-effort — always clear the local session regardless.
+    } finally {
+      await clearAuthState();
+    }
   };
 
-  const refreshAccessToken = async () => {
+  const updateProfile = async (patch) => {
     try {
-      const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-      if (!refreshToken) {
-        throw new Error("No refresh token available");
+      const { data } = await authAPI.updateProfile(patch);
+      if (data.success) {
+        setUser(data.user);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        return { success: true, user: data.user };
       }
+      return {
+        success: false,
+        error: data.error || "Could not update profile",
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.error || "Could not update profile.",
+      };
+    }
+  };
 
-      const response = await axios.post(`${Config.API_BASE_URL}/auth/refresh`, {
-        refresh_token: refreshToken,
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      const { data } = await authAPI.changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
       });
-
-      if (response.data.success) {
-        const { access_token } = response.data;
-        setToken(access_token);
-        await AsyncStorage.setItem(AUTH_TOKEN_KEY, access_token);
-        return access_token;
-      } else {
-        throw new Error("Token refresh failed");
-      }
-    } catch (error) {
-      console.error("Failed to refresh token:", error);
-      await logout();
-      throw error;
+      if (data.success) return { success: true };
+      return {
+        success: false,
+        error: data.error || "Could not change password",
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.error || "Could not change password.",
+      };
     }
   };
 
@@ -161,8 +187,9 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    refreshAccessToken,
-    isAuthenticated: !!user && !!token,
+    updateProfile,
+    changePassword,
+    isAuthenticated: Boolean(user && token),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

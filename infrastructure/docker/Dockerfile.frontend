@@ -1,20 +1,27 @@
 # syntax=docker/dockerfile:1.6
+#
+# Build context is the repository root (see docker-compose.yml: context: ..),
+# so all COPY paths below are relative to the repo root, not this directory.
 
 # ---- Build Stage ----
 FROM node:20-alpine AS builder
 
 WORKDIR /build
 
-COPY package*.json ./
+COPY web-frontend/package*.json ./
 RUN npm ci --ignore-scripts && \
     npm cache clean --force
 
-COPY . .
+COPY web-frontend/ .
 
-ARG REACT_APP_API_URL=/api
-ARG REACT_APP_ENV=production
-ENV REACT_APP_API_URL=$REACT_APP_API_URL \
-    REACT_APP_ENV=$REACT_APP_ENV
+# web-frontend is built with Vite: only VITE_-prefixed variables are exposed
+# to client code (import.meta.env), and only as baked into this build — a
+# static SPA can't read container environment variables at runtime. The
+# default "/api/v1" is a relative path proxied by nginx (see nginx.conf's
+# /api/ location) or a Kubernetes Ingress (see kubernetes/base/ingress.yaml),
+# so it works unchanged in any environment without rebuilding the image.
+ARG VITE_API_BASE_URL=/api/v1
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 RUN npm run build
 
@@ -34,7 +41,8 @@ RUN addgroup -g 10001 -S appgroup && \
     touch /var/run/nginx.pid && \
     chown appuser:appgroup /var/run/nginx.pid
 
-COPY --chown=appuser:appgroup docker/nginx.conf /etc/nginx/nginx.conf
+COPY --chown=appuser:appgroup infrastructure/docker/nginx.conf /etc/nginx/nginx.conf
+# web-frontend's Vite config sets build.outDir = "build" (not Vite's default "dist")
 COPY --from=builder --chown=appuser:appgroup /build/build /usr/share/nginx/html
 
 USER appuser

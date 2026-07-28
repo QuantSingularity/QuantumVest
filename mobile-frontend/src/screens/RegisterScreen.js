@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  View,
   StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
@@ -15,11 +14,7 @@ import {
   HelperText,
 } from "react-native-paper";
 import { useAuth } from "../context/AuthContext";
-import {
-  showErrorAlert,
-  validateEmail,
-  validatePassword,
-} from "../utils/errorHandler";
+import { showErrorAlert, validateEmail } from "../utils/errorHandler";
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -54,9 +49,8 @@ const RegisterScreen = ({ navigation }) => {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (!validatePassword(formData.password)) {
-      newErrors.password =
-        "Password must be at least 8 characters with uppercase, lowercase, and number";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -65,10 +59,6 @@ const RegisterScreen = ({ navigation }) => {
 
     if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required";
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required";
     }
 
     setErrors(newErrors);
@@ -178,7 +168,7 @@ const RegisterScreen = ({ navigation }) => {
             )}
 
             <TextInput
-              label="Last Name *"
+              label="Last Name"
               value={formData.lastName}
               onChangeText={(value) => updateFormData("lastName", value)}
               mode="outlined"

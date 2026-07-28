@@ -1,142 +1,190 @@
 #!/bin/bash
+#
+# QuantumVest Comprehensive Environment Setup Script
+#
+# Sets up a full local development environment: Python virtualenv + backend
+# dependencies, web-frontend and mobile-frontend Node dependencies, and
+# blockchain dependencies (if present).
+#
+# Usage: ./scripts/setup_quantumvest_env.sh
+#
 
-# QuantumVest Project Setup Script (Comprehensive)
+set -euo pipefail
 
-# Exit immediately if a command exits with a non-zero status.
-set -e
+# Colors for terminal output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-# Prerequisites (ensure these are installed):
-# - Python 3.x (the script will use python3.11 available in the environment)
-# - pip (Python package installer)
-# - Node.js (for frontend)
-# - npm (Node package manager)
-# - PostgreSQL (for backend database, as mentioned in README)
-# - Access to blockchain data (Binance Smart Chain or Ethereum, as per README)
-# - APIs for stock/crypto data (e.g., Alpha Vantage, CoinGecko, as per README)
+echo -e "${BLUE}=================================================${NC}"
+echo -e "${GREEN}QuantumVest Comprehensive Environment Setup${NC}"
+echo -e "${BLUE}=================================================${NC}"
 
-echo "Starting QuantumVest project setup..."
+command_exists() {
+  command -v "$1" >/dev/null 2>&1
+}
 
-PROJECT_DIR="/QuantumVest"
+# Resolve the project root from this script's own location, rather than
+# assuming a fixed path. A previous version of this script hardcoded
+# PROJECT_DIR="/QuantumVest", which only worked on the machine it was
+# originally written on and failed immediately for every real user.
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_DIR"
+echo -e "${BLUE}Project directory: ${PROJECT_DIR}${NC}"
 
-if [ ! -d "${PROJECT_DIR}" ]; then
-  echo "Error: Project directory ${PROJECT_DIR} not found."
-  echo "Please ensure the project is extracted correctly."
+if [ ! -f "README.md" ] || ! grep -q "QuantumVest" "README.md"; then
+  echo -e "${RED}Error: This doesn't appear to be the QuantumVest project directory.${NC}"
+  echo -e "${YELLOW}Please run this script from within the QuantumVest project (e.g. ./scripts/setup_quantumvest_env.sh).${NC}"
   exit 1
 fi
 
-cd "${PROJECT_DIR}"
-echo "Changed directory to $(pwd)"
+BACKEND_DIR="${PROJECT_DIR}/code/backend"
+AI_MODELS_DIR="${PROJECT_DIR}/code/ai_models"
+BLOCKCHAIN_DIR="${PROJECT_DIR}/code/blockchain"
+WEB_FRONTEND_DIR="${PROJECT_DIR}/web-frontend"
+MOBILE_FRONTEND_DIR="${PROJECT_DIR}/mobile-frontend"
+VENV_DIR="${PROJECT_DIR}/venv"
 
-# --- Backend Setup (Flask/Python) ---
-echo ""
-echo "Setting up QuantumVest Backend..."
-BACKEND_DIR_QV="${PROJECT_DIR}/code/backend"
+# ---------------------------------------------------------------------------
+# 1. Python backend environment
+# ---------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Setting up Python backend environment ---${NC}"
 
-if [ ! -d "${BACKEND_DIR_QV}" ]; then
-    echo "Error: Backend directory ${BACKEND_DIR_QV} not found. Skipping backend setup."
+if [ ! -d "$BACKEND_DIR" ]; then
+  echo -e "${RED}Error: ${BACKEND_DIR} not found.${NC}"
+  exit 1
+fi
+
+# Prefer python3.11 (matches the version used in CI), but fall back to
+# whatever python3 is available rather than failing outright.
+PYTHON_BIN=""
+if command_exists python3.11; then
+  PYTHON_BIN="python3.11"
+elif command_exists python3; then
+  PYTHON_BIN="python3"
+  PY_VERSION="$($PYTHON_BIN --version 2>&1)"
+  echo -e "${YELLOW}python3.11 not found; using $PY_VERSION instead. CI targets 3.11, so results may differ slightly.${NC}"
 else
-    cd "${BACKEND_DIR_QV}"
-    echo "Changed directory to $(pwd) for backend setup."
-
-    if [ ! -f "requirements.txt" ]; then
-        echo "Error: requirements.txt not found in ${BACKEND_DIR_QV}. Cannot install backend dependencies."
-    else
-        echo "Creating Python virtual environment for backend (venv_quantumvest_backend_py)..."
-        if ! python3.11 -m venv venv_quantumvest_backend_py; then
-            echo "Failed to create backend virtual environment. Please check your Python installation."
-        else
-            source venv_quantumvest_backend_py/bin/activate
-            echo "Backend Python virtual environment created and activated."
-
-            echo "Installing backend Python dependencies from requirements.txt..."
-            pip3 install -r requirements.txt
-            echo "Backend dependencies installed."
-
-            echo "To activate the backend virtual environment later, run: source ${BACKEND_DIR_QV}/venv_quantumvest_backend_py/bin/activate"
-            echo "The README mentions Flask or FastAPI. Based on requirements.txt (flask), it is likely Flask."
-            echo "To run the Flask backend, you would typically use a command like: flask run --host=0.0.0.0 --port=5000 (after setting FLASK_APP environment variable, e.g., export FLASK_APP=app.py)"
-            echo "Please check the backend source code for the exact run command or app entry point."
-            deactivate
-            echo "Backend Python virtual environment deactivated."
-        fi
-    fi
-    cd "${PROJECT_DIR}" # Return to the main project directory
+  echo -e "${RED}Error: No python3 interpreter found. Please install Python 3.${NC}"
+  exit 1
 fi
 
-# --- Frontend Setup (React/Node.js) ---
-echo ""
-echo "Setting up QuantumVest Web Frontend..."
-# README structure shows code/frontend, but package.json was found in code/web-frontend/
-FRONTEND_DIR_QV="${PROJECT_DIR}/code/web-frontend"
-
-if [ ! -d "${FRONTEND_DIR_QV}" ]; then
-    # Fallback to code/frontend if code/web-frontend doesn't exist
-    if [ -d "${PROJECT_DIR}/code/frontend" ]; then
-        FRONTEND_DIR_QV="${PROJECT_DIR}/code/frontend"
-        echo "Note: Using ${FRONTEND_DIR_QV} as web-frontend directory was not found."
-    else
-        echo "Error: Frontend directory (neither ${PROJECT_DIR}/code/web-frontend nor ${PROJECT_DIR}/code/frontend) not found. Skipping frontend setup."
-        FRONTEND_DIR_QV=""
-    fi
+if [ ! -d "$VENV_DIR" ]; then
+  echo -e "${BLUE}Creating virtual environment at ${VENV_DIR}...${NC}"
+  "$PYTHON_BIN" -m venv "$VENV_DIR"
+else
+  echo -e "${GREEN}Virtual environment already exists at ${VENV_DIR}.${NC}"
 fi
 
-if [ -n "${FRONTEND_DIR_QV}" ] && [ -d "${FRONTEND_DIR_QV}" ]; then
-    cd "${FRONTEND_DIR_QV}"
-    echo "Changed directory to $(pwd) for frontend setup."
+# shellcheck disable=SC1091
+source "${VENV_DIR}/bin/activate"
 
-    if [ ! -f "package.json" ]; then
-        echo "Error: package.json not found in ${FRONTEND_DIR_QV}. Cannot install frontend dependencies."
-    else
-        echo "Installing frontend Node.js dependencies using npm..."
-        if ! command -v npm &> /dev/null; then
-            echo "npm command could not be found. Please ensure Node.js and npm are installed and in your PATH."
-        else
-            npm install
-            echo "Frontend dependencies installed."
-            echo "To start the frontend development server (from ${FRONTEND_DIR_QV}): npm start (or webpack serve --mode development --open as per package.json)"
-            echo "To build the frontend for production (from ${FRONTEND_DIR_QV}): npm run build (or webpack --mode production as per package.json)"
-        fi
-    fi
-    cd "${PROJECT_DIR}" # Return to the main project directory
+echo -e "${BLUE}Installing backend dependencies...${NC}"
+pip install --upgrade pip
+pip install -r "${BACKEND_DIR}/requirements.txt"
+
+if [ -f "${AI_MODELS_DIR}/requirements.txt" ]; then
+  echo -e "${BLUE}Installing AI model dependencies...${NC}"
+  pip install -r "${AI_MODELS_DIR}/requirements.txt"
 fi
 
-# --- AI Models & Blockchain components (Placeholder based on README structure) ---
-echo ""
-echo "Notes on other components mentioned in README (AI Models, Smart Contracts):"
-AI_MODELS_DIR_QV="${PROJECT_DIR}/code/ai_models" # Assuming a similar structure if it exists
-SMART_CONTRACTS_DIR_QV="${PROJECT_DIR}/code/smart_contracts" # Assuming a similar structure if it exists
-
-if [ -d "${AI_MODELS_DIR_QV}" ]; then
-    echo "- An 'ai_models' directory exists at ${AI_MODELS_DIR_QV}. Check for specific setup instructions or dependency files (e.g., requirements.txt) within it."
-    if [ -f "${AI_MODELS_DIR_QV}/requirements.txt" ]; then
-        echo "  Found requirements.txt in ${AI_MODELS_DIR_QV}. Consider setting up a separate Python environment for it."
-    fi
-elif [ -d "${PROJECT_DIR}/code" ]; then
-    echo "- The 'code/' directory exists. AI models might be within subdirectories there. The README mentions Python (Scikit-learn, TensorFlow, PyTorch). Ensure these are installed in the relevant Python environment if used."
+if [ ! -f "${BACKEND_DIR}/.env" ]; then
+  echo -e "${YELLOW}${BACKEND_DIR}/.env not found.${NC}"
+  if [ -f "${BACKEND_DIR}/.env.example" ]; then
+    cp "${BACKEND_DIR}/.env.example" "${BACKEND_DIR}/.env"
+    echo -e "${GREEN}Created code/backend/.env from .env.example. Review it before running in production.${NC}"
+  else
+    echo -e "${YELLOW}No .env.example found either — you'll need to create code/backend/.env manually${NC}"
+    echo -e "${YELLOW}(see config.py for the variables it reads: SECRET_KEY, JWT_SECRET_KEY, DATABASE_URL, etc).${NC}"
+  fi
 fi
 
-if [ -d "${SMART_CONTRACTS_DIR_QV}" ]; then
-    echo "- A 'smart_contracts' directory exists at ${SMART_CONTRACTS_DIR_QV}. Check for specific setup instructions or dependency files (e.g., package.json for Hardhat/Truffle, or Python requirements) within it."
-    if [ -f "${SMART_CONTRACTS_DIR_QV}/package.json" ]; then
-        echo "  Found package.json in ${SMART_CONTRACTS_DIR_QV}. It might be a Node.js based blockchain project (e.g., Hardhat, Truffle)."
-    fi
-elif [ -d "${PROJECT_DIR}/code" ]; then
-    echo "- The 'code/' directory exists. Smart contracts might be within subdirectories there. The README mentions developing smart contracts."
+deactivate
+echo -e "${GREEN}Python backend environment setup complete.${NC}"
+
+# ---------------------------------------------------------------------------
+# 2. Web frontend (Vite + React)
+# ---------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Setting up web frontend ---${NC}"
+
+if [ ! -d "$WEB_FRONTEND_DIR" ]; then
+  echo -e "${YELLOW}${WEB_FRONTEND_DIR} not found. Skipping web frontend setup.${NC}"
+elif ! command_exists npm; then
+  echo -e "${RED}Error: npm not found. Please install Node.js before proceeding.${NC}"
+  exit 1
+else
+  (cd "$WEB_FRONTEND_DIR" && npm install)
+
+  if [ ! -f "${WEB_FRONTEND_DIR}/.env" ]; then
+    # web-frontend is built with Vite: only VITE_-prefixed variables are
+    # exposed to client code via import.meta.env.
+    echo "VITE_API_BASE_URL=http://localhost:5000/api/v1" > "${WEB_FRONTEND_DIR}/.env"
+    echo -e "${GREEN}Created web-frontend/.env${NC}"
+  fi
+  echo -e "${GREEN}Web frontend setup complete.${NC}"
 fi
 
-# --- Database Setup Reminder ---
-echo ""
-echo "Reminder: Ensure PostgreSQL is installed, running, and configured for the backend."
-echo "Database connection details will likely be needed in the backend's environment or configuration."
+# ---------------------------------------------------------------------------
+# 3. Mobile frontend (Expo + React Native)
+# ---------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Setting up mobile frontend ---${NC}"
 
-# --- Data Collection Reminder ---
-echo ""
-echo "Reminder: Data Collection for AI Models."
-echo "The README mentions gathering historical stock and crypto data from APIs like Alpha Vantage or CoinGecko."
-echo "This will be a manual step or require separate scripts not covered by this environment setup."
+if [ ! -d "$MOBILE_FRONTEND_DIR" ]; then
+  echo -e "${YELLOW}${MOBILE_FRONTEND_DIR} not found. Skipping mobile frontend setup.${NC}"
+elif ! command_exists npm; then
+  echo -e "${RED}Error: npm not found. Please install Node.js before proceeding.${NC}"
+  exit 1
+else
+  (cd "$MOBILE_FRONTEND_DIR" && npm install)
 
-echo ""
-echo "QuantumVest project setup script finished."
-echo "Please ensure all prerequisites (Python, Node.js, npm, PostgreSQL, API keys for data sources) are installed and configured."
-echo "Review the project's README.md and the instructions above for running the backend and frontend."
-echo "Manual setup will be required for AI Models and Blockchain components, including data collection and specific training/deployment steps."
+  if [ ! -f "${MOBILE_FRONTEND_DIR}/.env" ]; then
+    cat > "${MOBILE_FRONTEND_DIR}/.env" << 'EOL'
+API_BASE_URL=http://localhost:5000/api/v1
+APP_ENV=development
+EOL
+    echo -e "${GREEN}Created mobile-frontend/.env${NC}"
+  fi
+
+  echo -e "${GREEN}Mobile frontend setup complete.${NC}"
+  echo -e "${YELLOW}Run 'cd mobile-frontend && npm start' to launch Expo (requires Expo Go or a simulator).${NC}"
+fi
+
+# ---------------------------------------------------------------------------
+# 4. Blockchain (Truffle/Hardhat)
+# ---------------------------------------------------------------------------
+echo -e "\n${BLUE}--- Setting up blockchain environment ---${NC}"
+
+if [ ! -d "$BLOCKCHAIN_DIR" ]; then
+  echo -e "${YELLOW}${BLOCKCHAIN_DIR} not found. Skipping blockchain setup.${NC}"
+elif [ ! -f "${BLOCKCHAIN_DIR}/package.json" ]; then
+  echo -e "${YELLOW}No package.json in ${BLOCKCHAIN_DIR}. Skipping.${NC}"
+elif ! command_exists npm; then
+  echo -e "${RED}Error: npm not found. Please install Node.js before proceeding.${NC}"
+  exit 1
+else
+  (cd "$BLOCKCHAIN_DIR" && npm install)
+  echo -e "${GREEN}Blockchain environment setup complete.${NC}"
+fi
+
+# ---------------------------------------------------------------------------
+# Summary / next steps
+# ---------------------------------------------------------------------------
+echo -e "\n${GREEN}=================================================${NC}"
+echo -e "${GREEN}QuantumVest environment setup complete!${NC}"
+echo -e "${GREEN}=================================================${NC}"
+echo -e "\n${BLUE}To start the backend (Flask):${NC}"
+echo -e "  source venv/bin/activate"
+echo -e "  cd code/backend"
+echo -e "  FLASK_ENV=development python3 wsgi.py"
+echo -e "  # or, for auto-reload during development:"
+echo -e "  export FLASK_APP=wsgi.py"
+echo -e "  export FLASK_ENV=development"
+echo -e "  flask run --host=0.0.0.0 --port=5000"
+echo -e "\n${BLUE}To start the web frontend (Vite):${NC}"
+echo -e "  cd web-frontend && npm start   # http://localhost:3000"
+echo -e "\n${BLUE}To start the mobile frontend (Expo):${NC}"
+echo -e "  cd mobile-frontend && npm start"
+echo -e "\n${BLUE}Or, to start backend + web frontend together:${NC}"
+echo -e "  ./scripts/run_quantumvest.sh"

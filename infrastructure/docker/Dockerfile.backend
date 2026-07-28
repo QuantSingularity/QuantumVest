@@ -1,57 +1,61 @@
-# syntax=docker/dockerfile:1.6
+# syntax=docker/dockerfile:1
+#
+# Dockerfile for the QuantumVest backend (Flask + Gunicorn).
+# Build context is the repository root (see docker-compose.yml: context: ..),
+# so all COPY paths below are relative to the repo root, not this directory.
 
-# ---- Build Stage ----
-FROM node:20-alpine AS builder
+# ─── Builder ──────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-# Install dependencies first (layer caching)
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts && \
-    npm cache clean --force
+# Build tools for packages with C extensions (numpy, scipy, scikit-learn,
+# pandas, statsmodels, cryptography, bcrypt) — not needed in the final image.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy source and build
-COPY . .
-RUN npm run build 2>/dev/null || true
+COPY code/backend/requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-# ---- Production Stage ----
-FROM node:20-alpine AS production
+# ─── Production ───────────────────────────────────────────────────────────
+FROM python:3.11-slim AS production
 
-LABEL org.opencontainers.image.title="QuantumVest Backend" \
-      org.opencontainers.image.description="QuantumVest financial platform API service" \
-      org.opencontainers.image.vendor="QuantumVest" \
-      org.opencontainers.image.licenses="Proprietary"
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init=~1 && \
-    rm -rf /var/cache/apk/*
-
-# Create non-root user
-RUN addgroup -g 10001 -S appgroup && \
-    adduser -u 10001 -S appuser -G appgroup
+# Runtime-only system dependency: PyMySQL uses pure-Python MySQL protocol
+# code, so unlike mysqlclient it needs no libmysqlclient at all.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
 
 WORKDIR /app
 
-# Copy built artifacts and production node_modules
-COPY --from=builder --chown=appuser:appgroup /build/node_modules ./node_modules
-COPY --from=builder --chown=appuser:appgroup /build/dist ./dist
-COPY --from=builder --chown=appuser:appgroup /build/package.json ./
+# Bring in the packages built above (installed to the builder's user site-packages)
+COPY --from=builder /root/.local /home/appuser/.local
+COPY code/backend/ .
 
-# Create writable directories
-RUN mkdir -p /tmp /var/cache/app && \
-    chown -R appuser:appgroup /tmp /var/cache/app
+RUN chown -R appuser:appuser /app /home/appuser/.local
 
 USER appuser
+ENV PATH=/home/appuser/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-ENV NODE_ENV=production \
-    PORT=8080 \
-    METRICS_PORT=9090 \
-    LOG_LEVEL=info
+EXPOSE 8080
 
-EXPOSE 8080 9090
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
+    CMD wget -qO- http://localhost:8080/api/v1/health || exit 1
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget -qO- http://localhost:8080/health/live || exit 1
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "dist/server.js"]
+# wsgi.py defines `app = create_app(...)` — there is no main.py/app.py in
+# this backend. Access/error logs go to stdout/stderr (`-`) rather than a
+# file, since the container is intended to run with a read-only root
+# filesystem (see docker-compose.yml: read_only: true).
+CMD ["gunicorn", "wsgi:app", \
+     "--bind", "0.0.0.0:8080", \
+     "--workers", "4", \
+     "--worker-class", "gthread", \
+     "--threads", "2", \
+     "--timeout", "60", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]

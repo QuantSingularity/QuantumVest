@@ -18,17 +18,23 @@ jest.mock("react-native/Libraries/Linking/Linking", () => ({
 
 // Mock Dimensions
 jest.mock("react-native/Libraries/Utilities/Dimensions", () => ({
-  get: jest.fn(() => ({ width: 375, height: 667 })),
-  addEventListener: jest.fn(),
-  removeEventListener: jest.fn(),
+  __esModule: true,
+  default: {
+    get: jest.fn(() => ({ width: 375, height: 667 })),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  },
 }));
 
 // Mock PixelRatio
 jest.mock("react-native/Libraries/Utilities/PixelRatio", () => ({
-  get: jest.fn(() => 2),
-  getFontScale: jest.fn(() => 1),
-  getPixelSizeForLayoutSize: jest.fn((size) => size * 2),
-  roundToNearestPixel: jest.fn((size) => Math.round(size)),
+  __esModule: true,
+  default: {
+    get: jest.fn(() => 2),
+    getFontScale: jest.fn(() => 1),
+    getPixelSizeForLayoutSize: jest.fn((size) => size * 2),
+    roundToNearestPixel: jest.fn((size) => Math.round(size)),
+  },
 }));
 
 // Mock react-native-reanimated
@@ -43,10 +49,7 @@ jest.mock("expo-constants", () => ({
   expoConfig: {
     extra: {
       apiBaseUrl: "http://localhost:5000/api/v1",
-      coingeckoApiUrl: "https://api.coingecko.com/api/v3",
-      cryptonewsApiToken: "",
       appEnv: "development",
-      enableMockData: false,
     },
   },
 }));

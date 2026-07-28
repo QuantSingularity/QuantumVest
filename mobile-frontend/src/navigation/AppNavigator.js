@@ -1,29 +1,52 @@
 import React from "react";
-import { createStackNavigator } from "@react-navigation/stack";
-
-// Import Screens
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useTheme } from "react-native-paper";
 import DashboardScreen from "../screens/DashboardScreen";
-import PredictionScreen from "../screens/PredictionScreen";
-import PortfolioScreen from "../screens/PortfolioScreen";
+import PortfoliosScreen from "../screens/PortfoliosScreen";
 import WatchlistScreen from "../screens/WatchlistScreen";
-import NewsScreen from "../screens/NewsScreen";
-import SettingsScreen from "../screens/SettingsScreen";
+import RiskAnalyticsScreen from "../screens/RiskAnalyticsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import { brand } from "../theme/tokens";
 
-const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const ICONS = {
+  Dashboard: "view-dashboard-outline",
+  Portfolios: "briefcase-outline",
+  Watchlist: "star-outline",
+  Risk: "chart-bell-curve",
+  Profile: "account-outline",
+};
 
 const AppNavigator = () => {
+  const theme = useTheme();
+
   return (
-    <Stack.Navigator
-      initialRouteName="Dashboard"
-      screenOptions={{ headerShown: false }}
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: brand.primary,
+        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.outline,
+        },
+        tabBarIcon: ({ color, size }) => (
+          <Icon name={ICONS[route.name]} color={color} size={size} />
+        ),
+      })}
     >
-      <Stack.Screen name="Dashboard" component={DashboardScreen} />
-      <Stack.Screen name="Prediction" component={PredictionScreen} />
-      <Stack.Screen name="Portfolio" component={PortfolioScreen} />
-      <Stack.Screen name="Watchlist" component={WatchlistScreen} />
-      <Stack.Screen name="News" component={NewsScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-    </Stack.Navigator>
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Portfolios" component={PortfoliosScreen} />
+      <Tab.Screen name="Watchlist" component={WatchlistScreen} />
+      <Tab.Screen
+        name="Risk"
+        component={RiskAnalyticsScreen}
+        options={{ tabBarLabel: "Risk" }}
+      />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
   );
 };
 

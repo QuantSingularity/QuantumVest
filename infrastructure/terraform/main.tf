@@ -48,14 +48,16 @@ module "security" {
 module "compute" {
   source = "./modules/compute"
 
-  environment        = var.environment
-  vpc_id             = module.network.vpc_id
-  private_subnet_ids = module.network.private_subnet_ids
-  public_subnet_ids  = module.network.public_subnet_ids
-  instance_type      = var.instance_type
-  key_name           = var.key_name
-  app_name           = var.app_name
-  security_group_ids = [module.security.app_security_group_id]
+  environment            = var.environment
+  vpc_id                 = module.network.vpc_id
+  private_subnet_ids     = module.network.private_subnet_ids
+  public_subnet_ids      = module.network.public_subnet_ids
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  app_name               = var.app_name
+  security_group_ids     = [module.security.app_security_group_id]
+  alb_security_group_ids = [module.security.alb_security_group_id]
+  certificate_arn        = var.certificate_arn
 }
 
 module "database" {

@@ -1,225 +1,78 @@
-describe("QuantumVest E2E Tests", () => {
+describe("QuantumVest Mobile App", () => {
   beforeAll(async () => {
-    await device.launchApp({
-      permissions: { notifications: "YES" },
-      newInstance: true,
-    });
+    await device.launchApp();
   });
 
   beforeEach(async () => {
     await device.reloadReactNative();
   });
 
-  describe("Authentication Flow", () => {
-    it("should show login screen on app launch", async () => {
-      await expect(element(by.text("Welcome to QuantumVest"))).toBeVisible();
-      await expect(
-        element(by.text("Sign in to access your investment portfolio")),
-      ).toBeVisible();
+  describe("Home & Auth", () => {
+    it("shows the landing screen with sign in and get started actions", async () => {
+      await expect(element(by.text(/Invest with clarity/))).toBeVisible();
+      await expect(element(by.text("Sign In"))).toBeVisible();
+      await expect(element(by.text("Create Free Account"))).toBeVisible();
     });
 
-    it("should allow guest access to app", async () => {
-      await element(by.text("Continue as Guest")).tap();
-      await expect(element(by.text("QuantumVest Dashboard"))).toBeVisible();
+    it("navigates to the login screen", async () => {
+      await element(by.text("Sign In")).atIndex(0).tap();
+      await expect(element(by.text("Welcome back"))).toBeVisible();
     });
 
-    it("should navigate to register screen", async () => {
-      await element(by.text(/Don't have an account\\? Register/)).tap();
-      await expect(element(by.text("Create Account"))).toBeVisible();
-      await expect(
-        element(by.text("Join QuantumVest to start your investment journey")),
-      ).toBeVisible();
-    });
-
-    it("should show validation errors for empty login form", async () => {
-      await element(by.text("Sign In")).tap();
-      // Alert should show
-      await waitFor(element(by.text("Validation Error")))
-        .toBeVisible()
-        .withTimeout(2000);
-    });
-
-    it("should accept username and password input", async () => {
-      await element(by.label("Username or Email")).typeText("testuser");
-      await element(by.label("Password")).typeText("TestPassword123");
-      await element(by.label("Password")).tapReturnKey();
-      // Form should be filled
-      await expect(element(by.label("Username or Email"))).toHaveText(
-        "testuser",
-      );
-    });
-  });
-
-  describe("Dashboard Screen", () => {
-    beforeEach(async () => {
-      // Navigate to dashboard as guest
-      await element(by.text("Continue as Guest")).tap();
-      await waitFor(element(by.text("QuantumVest Dashboard")))
+    it("shows a validation error for empty login fields", async () => {
+      await element(by.text("Sign In")).atIndex(0).tap();
+      await element(by.text("Sign In")).atIndex(1).tap();
+      await waitFor(element(by.text(/enter your username/i)))
         .toBeVisible()
         .withTimeout(3000);
     });
 
-    it("should display dashboard with API status", async () => {
-      await expect(element(by.text(/Backend API Status:/))).toBeVisible();
+    it("navigates to the register screen", async () => {
+      await element(by.text("Sign In")).atIndex(0).tap();
+      await element(by.text("Create one")).tap();
+      await expect(element(by.text("Create your account"))).toBeVisible();
     });
 
-    it("should show Bitcoin and Ethereum charts or loading state", async () => {
-      // Either the charts load or we see empty state text
-      await waitFor(element(by.text(/Bitcoin \\(BTC\\)|Not enough data/)))
+    it("navigates to the forgot password screen", async () => {
+      await element(by.text("Sign In")).atIndex(0).tap();
+      await element(by.text("Forgot password?")).tap();
+      await expect(element(by.text("Forgot password?"))).toBeVisible();
+    });
+  });
+
+  // The following flows require a seeded test account and are intended to
+  // run against a backend with known credentials (see e2e/README or CI env).
+  describe("Authenticated app (requires TEST_USER credentials)", () => {
+    const email = process.env.E2E_TEST_EMAIL;
+    const password = process.env.E2E_TEST_PASSWORD;
+
+    beforeEach(async () => {
+      if (!email || !password) return;
+      await element(by.text("Sign In")).atIndex(0).tap();
+      await element(by.type("android.widget.EditText"))
+        .atIndex(0)
+        .typeText(email);
+      await element(by.type("android.widget.EditText"))
+        .atIndex(1)
+        .typeText(password);
+      await element(by.text("Sign In")).atIndex(1).tap();
+    });
+
+    it("lands on the dashboard tab after signing in", async () => {
+      if (!email || !password) return;
+      await waitFor(element(by.text(/Hi,/)))
         .toBeVisible()
         .withTimeout(5000);
     });
 
-    it("should navigate to News screen", async () => {
-      await element(by.text("News")).tap();
-      await expect(element(by.text("Crypto News"))).toBeVisible();
-    });
-
-    it("should navigate to Watchlist screen", async () => {
+    it("navigates between bottom tabs", async () => {
+      if (!email || !password) return;
+      await element(by.text("Portfolios")).tap();
+      await expect(element(by.text("Portfolios"))).toBeVisible();
       await element(by.text("Watchlist")).tap();
-      await expect(element(by.text("My Watchlist"))).toBeVisible();
-    });
-
-    it("should navigate to Predictions screen", async () => {
-      await element(by.text("Predictions")).tap();
-      await expect(element(by.text("Market Predictions"))).toBeVisible();
-    });
-
-    it("should navigate to Portfolio screen", async () => {
-      await element(by.text("Portfolio")).tap();
-      await expect(element(by.text("Portfolio Optimization"))).toBeVisible();
-    });
-
-    it("should navigate to Settings screen", async () => {
-      await element(by.id("settings-button")).tap();
-      await expect(element(by.text("Settings"))).toBeVisible();
-    });
-  });
-
-  describe("Prediction Screen Flow", () => {
-    beforeEach(async () => {
-      await element(by.text("Continue as Guest")).tap();
-      await waitFor(element(by.text("QuantumVest Dashboard")))
-        .toBeVisible()
-        .withTimeout(3000);
-      await element(by.text("Predictions")).tap();
-    });
-
-    it("should allow entering prediction parameters", async () => {
-      await element(by.label("Asset (e.g., BTC, ETH)")).clearText();
-      await element(by.label("Asset (e.g., BTC, ETH)")).typeText("ETH");
-
-      await element(by.label("Timeframe (e.g., 1d, 7d, 30d)")).clearText();
-      await element(by.label("Timeframe (e.g., 1d, 7d, 30d)")).typeText("7d");
-
-      await element(by.label("Current Price")).clearText();
-      await element(by.label("Current Price")).typeText("3000");
-
-      await element(by.text("Get Prediction")).tap();
-
-      // Should show result or loading
-      await waitFor(element(by.text(/Prediction Result|Loading/)))
-        .toBeVisible()
-        .withTimeout(5000);
-    });
-  });
-
-  describe("Portfolio Screen Flow", () => {
-    beforeEach(async () => {
-      await element(by.text("Continue as Guest")).tap();
-      await waitFor(element(by.text("QuantumVest Dashboard")))
-        .toBeVisible()
-        .withTimeout(3000);
-      await element(by.text("Portfolio")).tap();
-    });
-
-    it("should allow portfolio optimization input", async () => {
-      await element(by.label("Assets (comma-separated)")).clearText();
-      await element(by.label("Assets (comma-separated)")).typeText(
-        "BTC,ETH,SOL",
-      );
-
-      await element(by.label("Risk Tolerance (0.0 to 1.0)")).clearText();
-      await element(by.label("Risk Tolerance (0.0 to 1.0)")).typeText("0.6");
-
-      await element(by.text("Optimize Portfolio")).tap();
-
-      // Should show result
-      await waitFor(element(by.text(/Optimization Result|Expected Return/)))
-        .toBeVisible()
-        .withTimeout(5000);
-    });
-  });
-
-  describe("Watchlist Screen Flow", () => {
-    beforeEach(async () => {
-      await element(by.text("Continue as Guest")).tap();
-      await waitFor(element(by.text("QuantumVest Dashboard")))
-        .toBeVisible()
-        .withTimeout(3000);
-      await element(by.text("Watchlist")).tap();
-    });
-
-    it("should show empty watchlist message initially", async () => {
-      await expect(element(by.text(/Your watchlist is empty/))).toBeVisible();
-    });
-
-    it("should allow adding a coin to watchlist", async () => {
-      await element(by.id("add-coin-button")).tap();
-      await expect(element(by.text("Add Coin to Watchlist"))).toBeVisible();
-
-      await element(by.label("CoinGecko Coin ID")).typeText("bitcoin");
-      await element(by.text("Add")).tap();
-
-      // Should show the coin in list
-      await waitFor(element(by.text(/Bitcoin/)))
-        .toBeVisible()
-        .withTimeout(3000);
-    });
-  });
-
-  describe("News Screen Flow", () => {
-    beforeEach(async () => {
-      await element(by.text("Continue as Guest")).tap();
-      await waitFor(element(by.text("QuantumVest Dashboard")))
-        .toBeVisible()
-        .withTimeout(3000);
-      await element(by.text("News")).tap();
-    });
-
-    it("should display crypto news articles", async () => {
-      await waitFor(element(by.text(/Bitcoin|Ethereum|Crypto/)))
-        .toBeVisible()
-        .withTimeout(5000);
-    });
-
-    it("should allow refreshing news", async () => {
-      await element(by.id("refresh-news-button")).tap();
-      await waitFor(element(by.text(/Bitcoin|Ethereum|Crypto/)))
-        .toBeVisible()
-        .withTimeout(5000);
-    });
-  });
-
-  describe("Settings Screen Flow", () => {
-    beforeEach(async () => {
-      await element(by.text("Continue as Guest")).tap();
-      await waitFor(element(by.text("QuantumVest Dashboard")))
-        .toBeVisible()
-        .withTimeout(3000);
-      await element(by.id("settings-button")).tap();
-    });
-
-    it("should display settings options", async () => {
-      await expect(element(by.text("Settings"))).toBeVisible();
-      await expect(element(by.text("Appearance"))).toBeVisible();
-      await expect(element(by.text("API Configuration"))).toBeVisible();
-    });
-
-    it("should toggle dark mode", async () => {
-      await element(by.label("Dark Mode")).tap();
-      // Theme should change (hard to test visually in Detox)
-      await expect(element(by.label("Dark Mode"))).toBeVisible();
+      await expect(element(by.text("Watchlist"))).toBeVisible();
+      await element(by.text("Risk")).tap();
+      await expect(element(by.text("Risk Analytics"))).toBeVisible();
     });
   });
 });

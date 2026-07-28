@@ -1,0 +1,32 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: "{{ .Values.appName }}-backend-pdb"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}-backend"
+    environment: "{{ .Values.environment }}"
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-backend"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: "{{ .Values.appName }}-frontend-pdb"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}-frontend"
+    environment: "{{ .Values.environment }}"
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-frontend"
+# No PodDisruptionBudget for the database: it runs as a single,
+# non-replicated MySQL instance (see values.yaml database.replicas and the
+# comment on database-statefulset.yaml). A PDB here would only block
+# voluntary disruptions (node drains, cluster upgrades) for a pod that
+# provides no redundancy to protect in the first place.

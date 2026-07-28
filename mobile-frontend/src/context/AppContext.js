@@ -1,15 +1,38 @@
-import React, { createContext, useState, useContext, useCallback } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useCallback,
+  useEffect,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const AppContext = createContext(null);
+const THEME_KEY = "@QuantumVest:theme";
 
 export const AppProvider = ({ children }) => {
-  const [theme, setTheme] = useState("light");
+  const [theme, setThemeState] = useState("dark");
   const [currency, setCurrency] = useState("usd");
   const [notifications, setNotifications] = useState([]);
   const [networkStatus, setNetworkStatus] = useState("online");
 
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_KEY).then((saved) => {
+      if (saved === "light" || saved === "dark") setThemeState(saved);
+    });
+  }, []);
+
+  const setTheme = useCallback((next) => {
+    setThemeState(next);
+    AsyncStorage.setItem(THEME_KEY, next).catch(() => {});
+  }, []);
+
   const toggleTheme = useCallback(() => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+    setThemeState((prevTheme) => {
+      const next = prevTheme === "light" ? "dark" : "light";
+      AsyncStorage.setItem(THEME_KEY, next).catch(() => {});
+      return next;
+    });
   }, []);
 
   const addNotification = useCallback((notification) => {
@@ -35,6 +58,7 @@ export const AppProvider = ({ children }) => {
     notifications,
     networkStatus,
     toggleTheme,
+    setTheme,
     setCurrency,
     addNotification,
     clearNotification,

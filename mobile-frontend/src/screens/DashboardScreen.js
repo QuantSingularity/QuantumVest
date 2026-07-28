@@ -1,308 +1,295 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, FlatList, Alert, Dimensions } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Appbar, Button, Text, useTheme } from "react-native-paper";
+import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../context/AuthContext";
+import { portfolioAPI, watchlistAPI } from "../services/api";
+import { getAssetMap } from "../utils/assetCache";
 import {
-  Appbar,
-  Card,
-  Text,
-  Button,
-  ActivityIndicator,
-  List,
-  Divider,
-  useTheme,
-} from "react-native-paper";
-import { LineChart } from "react-native-chart-kit";
-import { checkApiHealth, getCoinMarketChart } from "../services/api";
-
-const screenWidth = Dimensions.get("window").width;
-
-// Chart configuration
-const chartConfig = {
-  backgroundColor: "#1E2923",
-  backgroundGradientFrom: "#08130D",
-  backgroundGradientTo: "#1A2F2B",
-  decimalPlaces: 2,
-  color: (opacity = 1) => `rgba(26, 255, 146, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-  style: {
-    borderRadius: 16,
-  },
-  propsForDots: {
-    r: "4",
-    strokeWidth: "1",
-    stroke: "#ffa726",
-  },
-};
+  formatCurrency,
+  formatPercentage,
+  handleApiError,
+} from "../utils/errorHandler";
+import LoadingSpinner from "../components/LoadingSpinner";
+import EmptyState from "../components/EmptyState";
+import StatCard from "../components/StatCard";
+import PerformanceLineChart from "../components/PerformanceLineChart";
 
 const DashboardScreen = ({ navigation }) => {
-  const [apiStatus, setApiStatus] = useState("Checking...");
-  const [btcChartData, setBtcChartData] = useState({
-    labels: [],
-    datasets: [{ data: [] }],
-  });
-  const [ethChartData, setEthChartData] = useState({
-    labels: [],
-    datasets: [{ data: [] }],
-  });
-  const [loading, setLoading] = useState(true);
   const theme = useTheme();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [portfolios, setPortfolios] = useState([]);
+  const [watchlists, setWatchlists] = useState([]);
+  const [featuredPerf, setFeaturedPerf] = useState(null);
+  const [recentTx, setRecentTx] = useState([]);
+  const [error, setError] = useState("");
 
-  const formatCoinGeckoChartData = (apiResponse) => {
-    const prices = apiResponse?.data?.prices;
-    if (!prices || prices.length === 0) {
-      return { labels: [], datasets: [{ data: [] }] };
-    }
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError("");
+    try {
+      const [portfoliosRes, watchlistsRes] = await Promise.all([
+        portfolioAPI.list(),
+        watchlistAPI.list(),
+      ]);
+      const portfolioList = portfoliosRes.data.success
+        ? portfoliosRes.data.portfolios
+        : [];
+      const watchlistList = watchlistsRes.data.success
+        ? watchlistsRes.data.watchlists
+        : [];
+      setPortfolios(portfolioList);
+      setWatchlists(watchlistList);
 
-    const labels = prices.map((item) =>
-      new Date(item[0]).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-    );
-    const data = prices.map((item) => item[1]);
+      if (portfolioList.length > 0) {
+        const featured = [...portfolioList].sort(
+          (a, b) => (b.total_value || 0) - (a.total_value || 0),
+        )[0];
+        const [perfRes, ...txResults] = await Promise.all([
+          portfolioAPI.getPerformance(featured.id, 90),
+          ...portfolioList
+            .slice(0, 5)
+            .map((p) => portfolioAPI.getTransactions(p.id, 1, 5)),
+        ]);
+        if (perfRes.data.success)
+          setFeaturedPerf({ ...perfRes.data.performance, name: featured.name });
 
-    if (data.length === 0) {
-      return { labels: [], datasets: [{ data: [] }] };
-    }
-
-    const step = Math.max(1, Math.floor(labels.length / 7));
-    const filteredLabels = labels.filter((_, index) => index % step === 0);
-
-    return {
-      labels: filteredLabels,
-      datasets: [{ data }],
-    };
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      let backendHealthy = false;
-      try {
-        const healthResponse = await checkApiHealth();
-        setApiStatus(
-          healthResponse.data.status === "healthy" ? "Online" : "Offline",
-        );
-        backendHealthy = healthResponse.data.status === "healthy";
-      } catch (error) {
-        console.error("Error checking backend health:", error);
-        setApiStatus("Error");
+        const assetMap = await getAssetMap();
+        const allTx = txResults
+          .flatMap((res, idx) =>
+            res.data.success
+              ? res.data.transactions.map((t) => ({
+                  ...t,
+                  portfolioName: portfolioList[idx].name,
+                }))
+              : [],
+          )
+          .sort((a, b) => new Date(b.executed_at) - new Date(a.executed_at))
+          .slice(0, 6)
+          .map((t) => ({ ...t, asset: assetMap[t.asset_id] }));
+        setRecentTx(allTx);
+      } else {
+        setFeaturedPerf(null);
+        setRecentTx([]);
       }
-
-      try {
-        const btcResponse = await getCoinMarketChart("bitcoin", "7");
-        setBtcChartData(formatCoinGeckoChartData(btcResponse));
-
-        const ethResponse = await getCoinMarketChart("ethereum", "7");
-        setEthChartData(formatCoinGeckoChartData(ethResponse));
-      } catch (error) {
-        console.error("Error fetching CoinGecko data:", error);
-        if (!backendHealthy) {
-          Alert.alert(
-            "API Error",
-            "Failed to fetch data from backend and CoinGecko. Please check connections.",
-          );
-        } else {
-          Alert.alert(
-            "CoinGecko Error",
-            "Failed to fetch market data from CoinGecko.",
-          );
-        }
-        setBtcChartData({ labels: [], datasets: [{ data: [] }] });
-        setEthChartData({ labels: [], datasets: [{ data: [] }] });
-      }
+    } catch (err) {
+      setError(handleApiError(err, "Couldn't load your dashboard right now."));
+    } finally {
       setLoading(false);
-    };
-
-    fetchData();
+      setRefreshing(false);
+    }
   }, []);
 
-  const renderChart = (chartData, title) => {
-    if (
-      !chartData ||
-      !chartData.datasets ||
-      chartData.datasets.length === 0 ||
-      chartData.datasets[0].data.length < 1
-    ) {
-      return (
-        <Text style={styles.emptyListText}>
-          Not enough data to display {title} chart.
-        </Text>
-      );
-    }
-    return (
-      <View style={styles.chartContainer}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          {title} Price Trend (Last 7 Days)
-        </Text>
-        <LineChart
-          data={chartData}
-          width={screenWidth - 30}
-          height={220}
-          yAxisLabel="$"
-          yAxisInterval={1}
-          chartConfig={chartConfig}
-          bezier
-          style={styles.chartStyle}
-        />
-      </View>
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  const totals = useMemo(() => {
+    const totalValue = portfolios.reduce(
+      (sum, p) => sum + (p.total_value || 0),
+      0,
     );
-  };
+    const invested = portfolios.reduce(
+      (sum, p) => sum + (p.invested_amount || 0),
+      0,
+    );
+    const unrealizedPnl = portfolios.reduce(
+      (sum, p) => sum + (p.unrealized_pnl || 0),
+      0,
+    );
+    const holdingsCount = portfolios.reduce(
+      (sum, p) => sum + (p.holdings_count || 0),
+      0,
+    );
+    const returnPct = invested > 0 ? (unrealizedPnl / invested) * 100 : 0;
+    return { totalValue, unrealizedPnl, holdingsCount, returnPct };
+  }, [portfolios]);
+
+  const watchlistItemCount = watchlists.reduce(
+    (sum, w) => sum + (w.items_count || 0),
+    0,
+  );
+
+  if (loading) return <LoadingSpinner message="Loading your dashboard..." />;
 
   return (
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       <Appbar.Header>
-        <Appbar.Content title="QuantumVest Dashboard" />
+        <Appbar.Content
+          title={`Hi, ${user?.first_name || user?.username || "there"}`}
+          subtitle="Here's your overview"
+        />
         <Appbar.Action
-          icon="cog"
+          icon="cog-outline"
           onPress={() => navigation.navigate("Settings")}
-          testID="settings-button"
         />
       </Appbar.Header>
 
-      <View style={styles.contentContainer}>
-        <Text
-          style={[styles.statusText, { color: theme.colors.onSurfaceVariant }]}
-          variant="titleMedium"
-        >
-          Backend API Status:{" "}
-          <Text
-            style={{
-              color:
-                apiStatus === "Online"
-                  ? "green"
-                  : apiStatus === "Offline"
-                    ? "orange"
-                    : "red",
-              fontWeight: "bold",
-            }}
-          >
-            {apiStatus}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => load(true)}
+          />
+        }
+      >
+        {!!error && (
+          <Text style={{ color: theme.colors.error, marginBottom: 12 }}>
+            {error}
           </Text>
-        </Text>
+        )}
 
-        {loading ? (
-          <ActivityIndicator
-            animating={true}
-            size="large"
-            style={styles.loader}
+        {portfolios.length === 0 ? (
+          <EmptyState
+            icon="briefcase-outline"
+            title="Create your first portfolio"
+            message="Track holdings, run risk analytics, and get AI-optimized allocations."
+            actionLabel="Create Portfolio"
+            onAction={() => navigation.navigate("Portfolios")}
           />
         ) : (
-          <FlatList
-            data={[{ key: "btcChart" }, { key: "ethChart" }]}
-            renderItem={({ item }) => {
-              if (item.key === "btcChart") {
-                return renderChart(btcChartData, "Bitcoin (BTC)");
-              } else if (item.key === "ethChart") {
-                return renderChart(ethChartData, "Ethereum (ETH)");
-              }
-            }}
-            keyExtractor={(item) => item.key}
-            ItemSeparatorComponent={() => (
-              <Divider
-                style={{
-                  marginVertical: 15,
-                  backgroundColor: theme.colors.outlineVariant,
-                }}
+          <>
+            <View style={styles.statsGrid}>
+              <StatCard
+                label="Total Value"
+                value={formatCurrency(totals.totalValue)}
+                hint={`${formatPercentage(totals.returnPct)} all-time`}
+                tone={totals.returnPct >= 0 ? "up" : "down"}
               />
-            )}
-            style={styles.listContainer}
-            ListFooterComponent={
-              <View style={styles.buttonContainer}>
-                <Button
-                  mode="contained"
-                  icon="newspaper-variant-multiple"
-                  onPress={() => navigation.navigate("News")}
-                  style={styles.button}
-                >
-                  News
-                </Button>
-                <Button
-                  mode="contained"
-                  icon="playlist-check"
-                  onPress={() => navigation.navigate("Watchlist")}
-                  style={styles.button}
-                >
-                  Watchlist
-                </Button>
-                <Button
-                  mode="contained"
-                  icon="chart-line"
-                  onPress={() => navigation.navigate("Prediction")}
-                  style={styles.button}
-                >
-                  Predictions
-                </Button>
-                <Button
-                  mode="contained"
-                  icon="briefcase-check"
-                  onPress={() => navigation.navigate("Portfolio")}
-                  style={styles.button}
-                >
-                  Portfolio
-                </Button>
-              </View>
-            }
-          />
+              <StatCard
+                label="Unrealized P&L"
+                value={formatCurrency(totals.unrealizedPnl)}
+                tone={totals.unrealizedPnl >= 0 ? "up" : "down"}
+              />
+              <StatCard
+                label="Holdings"
+                value={String(totals.holdingsCount)}
+                hint={`${portfolios.length} portfolio(s)`}
+              />
+              <StatCard
+                label="Watchlist"
+                value={String(watchlistItemCount)}
+                hint="Assets tracked"
+              />
+            </View>
+
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outline,
+                },
+              ]}
+            >
+              <Text
+                variant="titleMedium"
+                style={{ color: theme.colors.onSurface, marginBottom: 8 }}
+              >
+                {featuredPerf?.name || "Portfolio"} performance
+              </Text>
+              <PerformanceLineChart
+                dates={featuredPerf?.dates || []}
+                values={featuredPerf?.values || []}
+              />
+            </View>
+
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outline,
+                },
+              ]}
+            >
+              <Text
+                variant="titleMedium"
+                style={{ color: theme.colors.onSurface, marginBottom: 8 }}
+              >
+                Recent activity
+              </Text>
+              {recentTx.length === 0 ? (
+                <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                  No transactions yet.
+                </Text>
+              ) : (
+                recentTx.map((tx) => (
+                  <View
+                    key={tx.id}
+                    style={[
+                      styles.txRow,
+                      { borderBottomColor: theme.colors.outline },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          color: theme.colors.onSurface,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {tx.transaction_type.toUpperCase()} ·{" "}
+                        {tx.asset?.symbol || "Asset"}
+                      </Text>
+                      <Text
+                        style={{
+                          color: theme.colors.onSurfaceVariant,
+                          fontSize: 12,
+                        }}
+                      >
+                        {tx.portfolioName} ·{" "}
+                        {new Date(tx.executed_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        color: theme.colors.onSurface,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {formatCurrency(tx.total_amount)}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate("Risk")}
+              style={styles.cta}
+            >
+              Run Risk Analysis
+            </Button>
+          </>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  statusText: {
-    textAlign: "center",
-    marginVertical: 15,
-  },
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listContainer: {
-    flex: 1,
-  },
-  chartContainer: {
-    alignItems: "center",
-    marginVertical: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  chartStyle: {
-    marginVertical: 8,
-    borderRadius: 16,
-  },
-  emptyListText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontStyle: "italic",
-    paddingHorizontal: 15,
-  },
-  buttonContainer: {
-    paddingVertical: 15,
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 32, gap: 14 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  card: { padding: 16, borderRadius: 16, borderWidth: 1 },
+  txRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    paddingHorizontal: 15,
-    marginTop: 15,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
   },
-  button: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
+  cta: { borderRadius: 12, marginTop: 4 },
 });
 
 export default DashboardScreen;

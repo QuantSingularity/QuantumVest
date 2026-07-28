@@ -393,6 +393,37 @@ def get_watchlists(current_user: Any) -> Tuple[Response, int]:
         return jsonify({"success": False, "error": "Failed to get watchlists"}), 500
 
 
+@api_bp.route("/watchlists/<watchlist_id>", methods=["GET"])
+@token_required
+def get_watchlist_detail(current_user: Any, watchlist_id: str) -> Tuple[Response, int]:
+    """Return a single watchlist with its items and asset details.
+
+    Added to close a gap: the list endpoint only exposed items_count, and
+    there was previously no way for a client to discover which assets are
+    in a watchlist (making removal impossible, since that requires an
+    item_id the client could never obtain).
+    """
+    try:
+        wl = Watchlist.query.filter_by(id=watchlist_id, user_id=current_user.id).first()
+        if not wl:
+            return jsonify({"success": False, "error": "Watchlist not found"}), 404
+
+        items = []
+        for item in wl.items.order_by(WatchlistItem.created_at.desc()).all():
+            asset = db.session.get(Asset, item.asset_id)
+            items.append(
+                {**item.to_dict(), "asset": asset.to_dict() if asset else None}
+            )
+
+        return (
+            jsonify({"success": True, "watchlist": {**wl.to_dict(), "items": items}}),
+            200,
+        )
+    except Exception as exc:
+        logger.error("get_watchlist_detail error: %s", exc)
+        return jsonify({"success": False, "error": "Failed to get watchlist"}), 500
+
+
 @api_bp.route("/watchlists", methods=["POST"])
 @token_required
 def create_watchlist(current_user: Any) -> Tuple[Response, int]:
@@ -464,7 +495,16 @@ def add_watchlist_item(current_user: Any, watchlist_id: str) -> Tuple[Response, 
         )
         db.session.add(item)
         db.session.commit()
-        return jsonify({"success": True, "message": "Asset added to watchlist"}), 201
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Asset added to watchlist",
+                    "item": {**item.to_dict(), "asset": asset.to_dict()},
+                }
+            ),
+            201,
+        )
     except Exception as exc:
         db.session.rollback()
         logger.error("add_watchlist_item error: %s", exc)

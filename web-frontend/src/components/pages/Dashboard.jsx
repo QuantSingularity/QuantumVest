@@ -1,199 +1,290 @@
-import React from "react";
-import { useEffect, useState } from "react";
-import { marketDataAPI, portfolioAPI } from "../../services/api";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { portfolioAPI, watchlistAPI } from "../../services/api";
+import { getAssetMap } from "../../utils/assetCache";
+import {
+  formatCurrency,
+  formatSignedPercent,
+  trendClass,
+} from "../../utils/finance";
+import { getErrorMessage } from "../../utils/helpers";
+import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../ui/LoadingSpinner";
+import EmptyState from "../ui/EmptyState";
+import PerformanceChart from "../charts/PerformanceChart";
 import "../../styles/Dashboard.css";
 
 export default function Dashboard() {
-  const [marketData, setMarketData] = useState([]);
-  const [portfolio, setPortfolio] = useState(null);
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [stats, setStats] = useState({
-    totalAssets: 0,
-    totalGain: 0,
-    performance: 0,
-  });
+  const [error, setError] = useState("");
+  const [portfolios, setPortfolios] = useState([]);
+  const [watchlists, setWatchlists] = useState([]);
+  const [featuredPerf, setFeaturedPerf] = useState(null);
+  const [recentTx, setRecentTx] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError("");
       try {
-        setLoading(true);
-        setError(null);
+        const [portfoliosRes, watchlistsRes] = await Promise.all([
+          portfolioAPI.list(),
+          watchlistAPI.list(),
+        ]);
+        if (cancelled) return;
 
-        // Fetch portfolio data
-        try {
-          const portfolioResponse = await portfolioAPI.getPortfolio();
-          if (
-            portfolioResponse.data.success &&
-            portfolioResponse.data.portfolios.length > 0
-          ) {
-            const userPortfolio = portfolioResponse.data.portfolios[0];
-            setPortfolio(userPortfolio);
+        const portfolioList = portfoliosRes.data.success
+          ? portfoliosRes.data.portfolios
+          : [];
+        const watchlistList = watchlistsRes.data.success
+          ? watchlistsRes.data.watchlists
+          : [];
+        setPortfolios(portfolioList);
+        setWatchlists(watchlistList);
 
-            // Calculate stats from portfolio
-            const totalValue = userPortfolio.current_value || 0;
-            const initialValue = userPortfolio.initial_value || totalValue;
-            const gain = totalValue - initialValue;
-            const performance =
-              initialValue > 0 ? (gain / initialValue) * 100 : 0;
+        if (portfolioList.length > 0) {
+          const featured = [...portfolioList].sort(
+            (a, b) => (b.total_value || 0) - (a.total_value || 0),
+          )[0];
 
-            setStats({
-              totalAssets: totalValue,
-              totalGain: gain,
-              performance: performance,
+          const [perfRes, ...txResults] = await Promise.all([
+            portfolioAPI.getPerformance(featured.id, 90),
+            ...portfolioList
+              .slice(0, 5)
+              .map((p) => portfolioAPI.getTransactions(p.id, 1, 5)),
+          ]);
+          if (cancelled) return;
+
+          if (perfRes.data.success)
+            setFeaturedPerf({
+              ...perfRes.data.performance,
+              name: featured.name,
             });
-          }
-        } catch (portfolioError) {
-          console.warn("Portfolio data unavailable:", portfolioError.message);
-          // Use default stats if portfolio unavailable
-          setStats({
-            totalAssets: 25430.78,
-            totalGain: 1245.32,
-            performance: 4.9,
-          });
-        }
 
-        // Fetch blockchain market data
-        try {
-          const response = await marketDataAPI.getBlockchainData("ETH");
-          if (response.data.success && response.data.data) {
-            setMarketData(
-              Array.isArray(response.data.data) ? response.data.data : [],
-            );
-          }
-        } catch (marketError) {
-          console.warn("Market data unavailable:", marketError.message);
-          setMarketData([]);
+          const assetMap = await getAssetMap();
+          const allTx = txResults
+            .flatMap((res, idx) =>
+              res.data.success
+                ? res.data.transactions.map((t) => ({
+                    ...t,
+                    portfolioName: portfolioList[idx].name,
+                  }))
+                : [],
+            )
+            .sort((a, b) => new Date(b.executed_at) - new Date(a.executed_at))
+            .slice(0, 6)
+            .map((t) => ({ ...t, asset: assetMap[t.asset_id] }));
+
+          if (!cancelled) setRecentTx(allTx);
         }
       } catch (err) {
-        console.error("Dashboard error:", err);
-        setError("Unable to load dashboard data. Please try again later.");
+        if (!cancelled)
+          setError(
+            getErrorMessage(err, "Couldn't load your dashboard right now."),
+          );
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    fetchData();
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <LoadingSpinner text="Loading dashboard data" />
-      </div>
+  const totals = useMemo(() => {
+    const totalValue = portfolios.reduce(
+      (sum, p) => sum + (p.total_value || 0),
+      0,
     );
-  }
+    const invested = portfolios.reduce(
+      (sum, p) => sum + (p.invested_amount || 0),
+      0,
+    );
+    const unrealizedPnl = portfolios.reduce(
+      (sum, p) => sum + (p.unrealized_pnl || 0),
+      0,
+    );
+    const holdingsCount = portfolios.reduce(
+      (sum, p) => sum + (p.holdings_count || 0),
+      0,
+    );
+    const returnPct = invested > 0 ? (unrealizedPnl / invested) * 100 : 0;
+    return { totalValue, invested, unrealizedPnl, holdingsCount, returnPct };
+  }, [portfolios]);
 
-  if (error) {
-    return (
-      <div className="error-container">
-        <div className="error-icon">⚠️</div>
-        <p>{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="retry-button"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const watchlistItemCount = watchlists.reduce(
+    (sum, w) => sum + (w.items_count || 0),
+    0,
+  );
+  const firstName = user?.first_name || user?.username || "there";
+
+  if (loading)
+    return <LoadingSpinner fullScreen message="Loading your dashboard..." />;
 
   return (
-    <div className="dashboard-container">
-      <h1 className="section-title">Investment Dashboard</h1>
-
-      <div className="stats-overview">
-        <div className="stat-card">
-          <h3>Total Assets</h3>
-          <p className="stat-value">
-            $
-            {stats.totalAssets.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </p>
+    <div className="dashboard-page">
+      <div className="page-header">
+        <div>
+          <span className="section-eyebrow">Overview</span>
+          <h2>Welcome back, {firstName}</h2>
+          <p>Here&apos;s how your investments are doing today.</p>
         </div>
-        <div className="stat-card">
-          <h3>Total Gain/Loss</h3>
-          <p
-            className={`stat-value ${stats.totalGain >= 0 ? "positive" : "negative"}`}
-          >
-            {stats.totalGain >= 0 ? "+" : ""}$
-            {Math.abs(stats.totalGain).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </p>
-        </div>
-        <div className="stat-card">
-          <h3>Performance</h3>
-          <p
-            className={`stat-value ${stats.performance >= 0 ? "positive" : "negative"}`}
-          >
-            {stats.performance >= 0 ? "+" : ""}
-            {stats.performance.toFixed(2)}%
-          </p>
+        <div className="flex gap-sm">
+          <Link to="/portfolios" className="btn btn-secondary">
+            Manage Portfolios
+          </Link>
+          <Link to="/risk-analytics" className="btn btn-primary">
+            Run Risk Analysis
+          </Link>
         </div>
       </div>
 
-      <h2 className="section-title">Recent Market Data</h2>
+      {error && (
+        <div className="auth-alert" style={{ marginBottom: "var(--space-md)" }}>
+          {error}
+        </div>
+      )}
 
-      <div className="market-data-grid">
-        {marketData.length > 0 ? (
-          marketData.slice(-5).map((entry, index) => (
-            <div className="market-card" key={index}>
-              <div className="market-card-header">
-                <h3>ETH</h3>
-                <span className="date">
-                  {new Date(entry.timestamp * 1000).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="market-card-content">
-                <p className="price">
-                  Price:{" "}
-                  <span>
-                    $
-                    {parseFloat(entry.price).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </p>
-                <p className="volume">
-                  Volume:{" "}
-                  <span>{parseInt(entry.volume, 10).toLocaleString()}</span>
-                </p>
-              </div>
+      {portfolios.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={<span style={{ fontSize: "1.6rem" }}>💼</span>}
+            title="Create your first portfolio"
+            description="Track holdings, run risk analytics, and get AI-optimized allocations once you set up a portfolio."
+            action={
+              <Link to="/portfolios" className="btn btn-primary">
+                Create Portfolio
+              </Link>
+            }
+          />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-4 dashboard-stats">
+            <div className="card stat-card">
+              <span className="stat-label">Total Value</span>
+              <span className="stat-value mono">
+                {formatCurrency(totals.totalValue)}
+              </span>
+              <span className={`stat-delta ${trendClass(totals.returnPct)}`}>
+                {formatSignedPercent(totals.returnPct)} all-time
+              </span>
             </div>
-          ))
-        ) : (
-          <div className="no-data-message">
-            <p>No market data available. Please check back later.</p>
+            <div className="card stat-card">
+              <span className="stat-label">Unrealized P&amp;L</span>
+              <span
+                className={`stat-value mono ${trendClass(totals.unrealizedPnl)}`}
+              >
+                {formatCurrency(totals.unrealizedPnl)}
+              </span>
+              <span className="stat-delta text-tertiary">
+                Across {portfolios.length} portfolio
+                {portfolios.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="card stat-card">
+              <span className="stat-label">Holdings</span>
+              <span className="stat-value mono">{totals.holdingsCount}</span>
+              <span className="stat-delta text-tertiary">
+                Positions under management
+              </span>
+            </div>
+            <div className="card stat-card">
+              <span className="stat-label">Watchlist</span>
+              <span className="stat-value mono">{watchlistItemCount}</span>
+              <span className="stat-delta text-tertiary">Assets tracked</span>
+            </div>
           </div>
-        )}
-      </div>
 
-      {portfolio && (
-        <div className="portfolio-summary">
-          <h2 className="section-title">Portfolio Summary</h2>
-          <div className="portfolio-info">
-            <p>
-              <strong>Portfolio Name:</strong>{" "}
-              {portfolio.name || "My Portfolio"}
-            </p>
-            <p>
-              <strong>Created:</strong>{" "}
-              {new Date(portfolio.created_at).toLocaleDateString()}
-            </p>
-            {portfolio.description && (
-              <p>
-                <strong>Description:</strong> {portfolio.description}
-              </p>
-            )}
+          <div className="grid dashboard-main-grid">
+            <div className="card">
+              <div className="section-title">
+                <h3>{featuredPerf?.name || "Portfolio"} performance</h3>
+                <Link to="/portfolios" className="auth-link">
+                  View all →
+                </Link>
+              </div>
+              {featuredPerf ? (
+                <>
+                  <PerformanceChart
+                    dates={featuredPerf.dates || []}
+                    values={featuredPerf.values || []}
+                  />
+                  <div className="dashboard-perf-meta">
+                    <div>
+                      <span className="text-tertiary">Volatility</span>
+                      <strong>
+                        {(featuredPerf.volatility || 0).toFixed(2)}%
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-tertiary">Sharpe</span>
+                      <strong>
+                        {(featuredPerf.sharpe_ratio || 0).toFixed(2)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-tertiary">Max Drawdown</span>
+                      <strong>
+                        {(featuredPerf.max_drawdown || 0).toFixed(2)}%
+                      </strong>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <EmptyState
+                  title="No performance data yet"
+                  description="Check back after your portfolio accrues a few days of history."
+                />
+              )}
+            </div>
+
+            <div className="card">
+              <div className="section-title">
+                <h3>Recent activity</h3>
+                <Link to="/portfolios" className="auth-link">
+                  View all →
+                </Link>
+              </div>
+              {recentTx.length === 0 ? (
+                <EmptyState
+                  title="No transactions yet"
+                  description="Buy, sell, or deposit into a portfolio to see activity here."
+                />
+              ) : (
+                <ul className="activity-list">
+                  {recentTx.map((tx) => (
+                    <li key={tx.id} className="activity-item">
+                      <span
+                        className={`badge ${tx.transaction_type === "sell" ? "badge-danger" : "badge-success"}`}
+                      >
+                        {tx.transaction_type}
+                      </span>
+                      <div className="activity-item-body">
+                        <p>
+                          <strong>{tx.asset?.symbol || "Asset"}</strong> ·{" "}
+                          {tx.quantity} @ {formatCurrency(tx.price)}
+                        </p>
+                        <span className="text-tertiary">
+                          {tx.portfolioName} ·{" "}
+                          {new Date(tx.executed_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <span className="mono">
+                        {formatCurrency(tx.total_amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

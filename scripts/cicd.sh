@@ -26,8 +26,23 @@ command_exists() {
 setup_github_actions() {
   echo -e "\n${BLUE}Setting up GitHub Actions workflows...${NC}"
 
-  # Create .github/workflows directory if it doesn't exist
+  # Don't blindly overwrite/duplicate existing workflows. If ci.yml/cd.yml
+  # already exist, or some other workflow file is already present, creating
+  # new ones risks running two conflicting CI pipelines on every push.
   mkdir -p .github/workflows
+
+  if [ -f ".github/workflows/ci.yml" ] || [ -f ".github/workflows/cd.yml" ]; then
+    echo -e "${YELLOW}.github/workflows/ci.yml or cd.yml already exists. Skipping to avoid overwriting it.${NC}"
+    echo -e "${YELLOW}Remove the existing file(s) first if you want this script to regenerate them.${NC}"
+    return
+  fi
+
+  if find .github/workflows -maxdepth 1 -name "*.yml" 2>/dev/null | grep -q .; then
+    echo -e "${YELLOW}Existing workflow file(s) found in .github/workflows/:${NC}"
+    find .github/workflows -maxdepth 1 -name "*.yml" -printf "  - %f\n" 2>/dev/null
+    echo -e "${YELLOW}Skipping generation of ci.yml/cd.yml to avoid a conflicting duplicate pipeline.${NC}"
+    return
+  fi
 
   # Create CI workflow file
   echo -e "${BLUE}Creating CI workflow file...${NC}"
@@ -75,7 +90,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
@@ -89,7 +104,12 @@ jobs:
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
         REDIS_URL: redis://localhost:6379/0
-        ENVIRONMENT: test
+        # NOTE: config.py's get_config() reads FLASK_ENV (not ENVIRONMENT)
+        # to select TestingConfig. TestingConfig hardcodes an in-memory
+        # sqlite database regardless of DATABASE_URL, so the Postgres/Redis
+        # services above exist for tests that may shell out to them
+        # directly, not for SQLAlchemy itself.
+        FLASK_ENV: testing
       run: |
         cd code/backend
         pytest --cov=. --cov-report=xml
@@ -100,7 +120,7 @@ jobs:
         file: ./code/backend/coverage.xml
         flags: backend
 
-  frontend-tests:
+  web-frontend-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -109,25 +129,53 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '20'
         cache: 'npm'
-        cache-dependency-path: code/frontend/package-lock.json
+        cache-dependency-path: web-frontend/package-lock.json
 
     - name: Install dependencies
       run: |
-        cd code/frontend
+        cd web-frontend
         npm ci
 
     - name: Run tests
       run: |
-        cd code/frontend
-        npm test -- --coverage
+        cd web-frontend
+        npm test
+
+    - name: Build
+      run: |
+        cd web-frontend
+        npm run build
 
     - name: Upload coverage report
       uses: codecov/codecov-action@v3
       with:
-        file: ./code/frontend/coverage/coverage-final.json
-        flags: frontend
+        file: ./web-frontend/coverage/coverage-final.json
+        flags: web-frontend
+
+  mobile-frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: mobile-frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd mobile-frontend
+        npm ci
+
+    - name: Run tests
+      run: |
+        cd mobile-frontend
+        npm test
 
   blockchain-tests:
     runs-on: ubuntu-latest
@@ -138,7 +186,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '20'
         cache: 'npm'
         cache-dependency-path: code/blockchain/package-lock.json
 
@@ -161,28 +209,31 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
+        python-version: '3.11'
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '20'
 
-    - name: Install dependencies
+    - name: Install Python linters
       run: |
         python -m pip install --upgrade pip
         pip install flake8 black
-        cd code/frontend
-        npm ci
 
-    - name: Run linting
+    - name: Run Python linting
       run: |
-        # Python linting
         flake8 code/backend
         black --check code/backend
 
-        # JavaScript/TypeScript linting
-        cd code/frontend
+    - name: Install web-frontend dependencies
+      run: |
+        cd web-frontend
+        npm ci
+
+    - name: Run web-frontend linting
+      run: |
+        cd web-frontend
         npm run lint
 EOL
 
@@ -234,7 +285,7 @@ jobs:
     - name: Build and push frontend
       uses: docker/build-push-action@v4
       with:
-        context: ./code/frontend
+        context: ./web-frontend
         push: true
         tags: ${{ steps.meta.outputs.tags }}-frontend
         labels: ${{ steps.meta.outputs.labels }}
@@ -253,8 +304,8 @@ jobs:
         key: ${{ secrets.DEPLOY_KEY }}
         script: |
           cd /path/to/deployment
-          docker-compose pull
-          docker-compose up -d
+          docker compose pull
+          docker compose up -d
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -329,10 +380,10 @@ fi
 # Update version in package.json files
 echo -e "${BLUE}Updating version in package.json files...${NC}"
 
-# Frontend package.json
-if [ -f "code/frontend/package.json" ]; then
-  sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" code/frontend/package.json
-  echo -e "${GREEN}Updated version in code/frontend/package.json${NC}"
+# Web frontend package.json
+if [ -f "web-frontend/package.json" ]; then
+  sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" web-frontend/package.json
+  echo -e "${GREEN}Updated version in web-frontend/package.json${NC}"
 fi
 
 # Mobile frontend package.json
@@ -354,9 +405,12 @@ echo -e "${BLUE}Updating version in Python files...${NC}"
 if [ -f "code/backend/version.py" ]; then
   echo "__version__ = '$VERSION'" > code/backend/version.py
   echo -e "${GREEN}Updated version in code/backend/version.py${NC}"
-elif [ -f "code/backend/__init__.py" ]; then
+elif [ -f "code/backend/__init__.py" ] && grep -q "__version__" code/backend/__init__.py; then
   sed -i "s/__version__ = '.*'/__version__ = '$VERSION'/" code/backend/__init__.py
   echo -e "${GREEN}Updated version in code/backend/__init__.py${NC}"
+else
+  echo "__version__ = '$VERSION'" > code/backend/version.py
+  echo -e "${GREEN}Created code/backend/version.py with version $VERSION${NC}"
 fi
 
 # Create changelog entry
@@ -375,28 +429,30 @@ RELEASE_DATE=$(date +"%Y-%m-%d")
 TEMP_FILE=$(mktemp)
 
 # Write the new changelog entry
-echo "## [$VERSION] - $RELEASE_DATE" > $TEMP_FILE
-echo "" >> $TEMP_FILE
-echo "### Added" >> $TEMP_FILE
-echo "- " >> $TEMP_FILE
-echo "" >> $TEMP_FILE
-echo "### Changed" >> $TEMP_FILE
-echo "- " >> $TEMP_FILE
-echo "" >> $TEMP_FILE
-echo "### Fixed" >> $TEMP_FILE
-echo "- " >> $TEMP_FILE
-echo "" >> $TEMP_FILE
+{
+  echo "## [$VERSION] - $RELEASE_DATE"
+  echo ""
+  echo "### Added"
+  echo "- "
+  echo ""
+  echo "### Changed"
+  echo "- "
+  echo ""
+  echo "### Fixed"
+  echo "- "
+  echo ""
+} > "$TEMP_FILE"
 
 # Prepend the new changelog entry to the existing changelog
-cat CHANGELOG.md >> $TEMP_FILE
-mv $TEMP_FILE CHANGELOG.md
+cat CHANGELOG.md >> "$TEMP_FILE"
+mv "$TEMP_FILE" CHANGELOG.md
 
 echo -e "${GREEN}Created changelog entry for version $VERSION${NC}"
 echo -e "${YELLOW}Please edit CHANGELOG.md to add the actual changes.${NC}"
 
 # Commit the version changes
 echo -e "${BLUE}Committing version changes...${NC}"
-git add code/frontend/package.json mobile-frontend/package.json code/blockchain/package.json code/backend/version.py code/backend/__init__.py CHANGELOG.md 2>/dev/null || true
+git add web-frontend/package.json mobile-frontend/package.json code/blockchain/package.json code/backend/version.py code/backend/__init__.py CHANGELOG.md 2>/dev/null || true
 git commit -m "Bump version to $VERSION"
 
 # Create a tag
@@ -417,6 +473,12 @@ EOL
 # Function to set up version control hooks
 setup_version_control_hooks() {
   echo -e "\n${BLUE}Setting up version control hooks...${NC}"
+
+  if [ ! -d ".git" ]; then
+    echo -e "${YELLOW}No .git directory found — this doesn't look like a git repository yet.${NC}"
+    echo -e "${YELLOW}Run 'git init' first, then re-run this script to install hooks.${NC}"
+    return
+  fi
 
   # Create .git/hooks directory if it doesn't exist
   mkdir -p .git/hooks
@@ -442,7 +504,7 @@ echo -e "${BLUE}Running pre-commit checks...${NC}"
 echo -e "${BLUE}Checking for Python syntax errors...${NC}"
 for file in $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$'); do
   if [ -f "$file" ]; then
-    python -m py_compile "$file" || {
+    python3 -m py_compile "$file" || {
       echo -e "${RED}Python syntax error in $file${NC}"
       exit 1
     }
@@ -462,10 +524,10 @@ for file in $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|j
   fi
 done
 
-# Run linting if lint-all.sh exists
-if [ -f "lint-all.sh" ]; then
+# Run linting if scripts/lint-all.sh exists
+if [ -f "scripts/lint-all.sh" ]; then
   echo -e "${BLUE}Running linting...${NC}"
-  ./lint-all.sh || {
+  bash scripts/lint-all.sh || {
     echo -e "${RED}Linting failed${NC}"
     echo -e "${YELLOW}Please fix the linting errors before committing.${NC}"
     exit 1
@@ -495,27 +557,43 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}Running pre-push checks...${NC}"
 
-# Run tests if they exist
+# Run backend tests if they exist
 if [ -d "code/backend/tests" ]; then
   echo -e "${BLUE}Running backend tests...${NC}"
-  cd code/backend
-  python -m pytest || {
+  (
+    cd code/backend
+    python3 -m pytest
+  ) || {
     echo -e "${RED}Backend tests failed${NC}"
     echo -e "${YELLOW}Please fix the failing tests before pushing.${NC}"
     exit 1
   }
-  cd ../..
 fi
 
-if [ -d "code/frontend" ] && grep -q "\"test\":" code/frontend/package.json; then
-  echo -e "${BLUE}Running frontend tests...${NC}"
-  cd code/frontend
-  npm test -- --watchAll=false || {
-    echo -e "${RED}Frontend tests failed${NC}"
+# Run web frontend tests if they exist
+if [ -d "web-frontend" ] && grep -q "\"test\":" web-frontend/package.json; then
+  echo -e "${BLUE}Running web frontend tests...${NC}"
+  (
+    cd web-frontend
+    CI=true npm test
+  ) || {
+    echo -e "${RED}Web frontend tests failed${NC}"
     echo -e "${YELLOW}Please fix the failing tests before pushing.${NC}"
     exit 1
   }
-  cd ../..
+fi
+
+# Run mobile frontend tests if they exist
+if [ -d "mobile-frontend" ] && grep -q "\"test\":" mobile-frontend/package.json; then
+  echo -e "${BLUE}Running mobile frontend tests...${NC}"
+  (
+    cd mobile-frontend
+    CI=true npm test
+  ) || {
+    echo -e "${RED}Mobile frontend tests failed${NC}"
+    echo -e "${YELLOW}Please fix the failing tests before pushing.${NC}"
+    exit 1
+  }
 fi
 
 echo -e "${GREEN}Pre-push checks passed.${NC}"

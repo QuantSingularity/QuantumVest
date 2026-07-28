@@ -80,10 +80,14 @@ services:
     restart: unless-stopped
     command:
       - redis-server
-      - --appendonly yes
-      - --maxmemory 256mb
-      - --maxmemory-policy allkeys-lru
-      - --requirepass ${REDIS_PASSWORD:?err}
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --requirepass
+      - ${REDIS_PASSWORD:?err}
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -113,24 +117,23 @@ services:
         condition: service_healthy
     environment:
       <<: *common-env
-      NODE_ENV: ${NODE_ENV:-development}
+      FLASK_ENV: ${FLASK_ENV:-production}
       PORT: "8080"
-      METRICS_PORT: "9090"
       LOG_LEVEL: ${LOG_LEVEL:-debug}
-      DATABASE_URL: mysql://${DB_USER:-appuser}:${DB_PASSWORD}@database:3306/${DB_NAME:-quantumvestdb}
+      DATABASE_URL: mysql+pymysql://${DB_USER:-appuser}:${DB_PASSWORD}@database:3306/${DB_NAME:-quantumvestdb}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      JWT_SECRET: ${JWT_SECRET:?err}
+      SECRET_KEY: ${SECRET_KEY:?err}
+      JWT_SECRET_KEY: ${JWT_SECRET:?err}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?err}
       API_KEY_HASH: ${API_KEY_HASH:-}
     ports:
       - "127.0.0.1:8080:8080"
-      - "127.0.0.1:9090:9090"
     networks:
       - backend-net
       - frontend-net
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/live"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health"]
       start_period: 60s
     security_opt:
       - no-new-privileges:true
@@ -146,8 +149,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.frontend
       target: production
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-/api}
-        REACT_APP_ENV: ${NODE_ENV:-development}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     image: quantumvest/frontend:local
     container_name: quantumvest-frontend
     restart: unless-stopped

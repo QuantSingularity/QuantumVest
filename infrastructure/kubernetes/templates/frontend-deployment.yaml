@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Values.appName }}-frontend"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    app: "{{ .Values.appName }}-frontend"
+    version: "{{ .Values.frontend.image.tag }}"
+    tier: frontend
+    component: web
+    environment: "{{ .Values.environment }}"
+spec:
+  replicas: { { .Values.frontend.replicas } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: "25%"
+      maxUnavailable: "25%"
+  selector:
+    matchLabels:
+      app: "{{ .Values.appName }}-frontend"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.appName }}-frontend"
+        version: "{{ .Values.frontend.image.tag }}"
+        tier: frontend
+        component: web
+        environment: "{{ .Values.environment }}"
+    spec:
+      serviceAccountName: "{{ .Values.appName }}-frontend"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - "{{ .Values.appName }}-frontend"
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: "{{ .Values.appName }}-frontend"
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: "{{ .Values.frontend.image.pullPolicy }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http
+              containerPort: { { .Values.frontend.containerPort } }
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "{{ .Values.frontend.resources.limits.cpu }}"
+              memory: "{{ .Values.frontend.resources.limits.memory }}"
+            requests:
+              cpu: "{{ .Values.frontend.resources.requests.cpu }}"
+              memory: "{{ .Values.frontend.resources.requests.memory }}"
+          # No runtime env vars here: this is a pre-built static SPA served
+          # by nginx, which can't read container environment variables and
+          # inject them into an already-compiled JS bundle. The API base URL
+          # is baked in at image build time — see Dockerfile.frontend's
+          # VITE_API_BASE_URL build arg (defaults to the relative path
+          # "/api/v1", proxied to the backend by this chart's Ingress, so it
+          # works unchanged in every environment without a rebuild).
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep 5
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: nginx-cache
+          emptyDir:
+            sizeLimit: 100Mi
+        - name: nginx-run
+          emptyDir:
+            sizeLimit: 10Mi
+      imagePullSecrets:
+        - name: "{{ .Values.imagePullSecrets }}"
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always

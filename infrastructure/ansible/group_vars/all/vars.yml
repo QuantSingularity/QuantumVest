@@ -1,0 +1,18 @@
+---
+# Applies to all hosts. Create group_vars/webservers.yml / databases.yml for
+# group-specific overrides if needed — see ansible/README.md.
+#
+# Secrets (db_root_password, db_password) are NOT here — see
+# group_vars/all/vault.yml.example for how those are supplied.
+
+app_name: quantumvest
+# Override per environment, e.g. via -e server_name=app.example.com,
+# or in group_vars/webservers.yml.
+server_name: _
+
+db_name: quantumvestdb
+db_user: appuser
+# Sourced from group_vars/all/vault.yml (see vault.yml.example) — never
+# put real secrets in this file, it isn't encrypted.
+db_root_password: "{{ vault_mysql_root_password }}"
+db_password: "{{ vault_db_password }}"

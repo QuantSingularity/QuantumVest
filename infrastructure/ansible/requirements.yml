@@ -1,0 +1,12 @@
+---
+# Install with: ansible-galaxy collection install -r requirements.yml
+collections:
+  # community.general.timezone, community.general.pam_limits
+  - name: community.general
+    version: ">=8.0.0"
+  # community.mysql.mysql_user, community.mysql.mysql_db
+  - name: community.mysql
+    version: ">=3.8.0"
+  # ansible.posix.firewalld
+  - name: ansible.posix
+    version: ">=1.5.0"
