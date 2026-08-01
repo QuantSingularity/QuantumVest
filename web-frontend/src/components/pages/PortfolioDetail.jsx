@@ -84,7 +84,7 @@ const PortfolioDetail = () => {
           setTxPage(page);
         }
       } catch (err) {
-        // Non-fatal — the rest of the page still works.
+        // Non-fatal - the rest of the page still works.
       }
     },
     [id],
@@ -258,7 +258,7 @@ const PortfolioDetail = () => {
           <span className="stat-value mono">
             {portfolio.sharpe_ratio
               ? formatNumber(portfolio.sharpe_ratio)
-              : "—"}
+              : "-"}
           </span>
         </div>
       </div>
@@ -514,7 +514,7 @@ const PortfolioDetail = () => {
             {selectedAsset ? (
               <div className="selected-asset-chip">
                 <span>
-                  <strong>{selectedAsset.symbol}</strong> — {selectedAsset.name}
+                  <strong>{selectedAsset.symbol}</strong> - {selectedAsset.name}
                 </span>
                 <button
                   type="button"

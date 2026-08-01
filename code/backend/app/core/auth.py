@@ -1,5 +1,5 @@
 """
-Authentication — JWT token management, request decorators, in-memory rate limiter.
+Authentication - JWT token management, request decorators, in-memory rate limiter.
 """
 
 import re
@@ -33,6 +33,16 @@ class AuthService:
             "exp": datetime.now(timezone.utc) + timedelta(hours=expires_in),
             "iat": datetime.now(timezone.utc),
             "type": "refresh",
+        }
+        return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+
+    @staticmethod
+    def generate_reset_token(user_id: Any, expires_in: int = 1) -> str:
+        payload = {
+            "user_id": str(user_id),
+            "exp": datetime.now(timezone.utc) + timedelta(hours=expires_in),
+            "iat": datetime.now(timezone.utc),
+            "type": "reset",
         }
         return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
@@ -201,6 +211,75 @@ class AuthService:
             db.session.rollback()
             return {"success": False, "error": str(e)}
 
+    @staticmethod
+    def request_password_reset(email: str) -> Dict[str, Any]:
+        """Issue a password-reset token for the account matching `email`.
+
+        Always returns a generic success response regardless of whether the
+        email is registered, so the endpoint can't be used to enumerate
+        accounts. No SMTP provider is configured in this project, so the
+        token is logged rather than emailed; swap the logger.info call for a
+        real mail send once a provider is wired up.
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+        generic_response = {
+            "success": True,
+            "message": (
+                "If an account exists for that email, a password reset link "
+                "has been sent."
+            ),
+        }
+        try:
+            if not AuthService.validate_email(email):
+                return generic_response
+
+            user = User.query.filter_by(email=email).first()
+            if not user or not user.is_active:
+                return generic_response
+
+            reset_token = AuthService.generate_reset_token(user.id)
+            logger.info(
+                "Password reset requested for user %s; reset_token=%s",
+                user.id,
+                reset_token,
+            )
+            return generic_response
+        except Exception as e:
+            logger.error("request_password_reset error: %s", e)
+            return generic_response
+
+    @staticmethod
+    def reset_password(reset_token: str, new_password: str) -> Dict[str, Any]:
+        try:
+            payload = jwt.decode(
+                reset_token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
+            )
+            if payload.get("type") != "reset":
+                return {"success": False, "error": "Invalid or expired reset token"}
+
+            is_valid, message = AuthService.validate_password(new_password)
+            if not is_valid:
+                return {"success": False, "error": message}
+
+            user = db.session.get(User, payload["user_id"])
+            if not user or not user.is_active:
+                return {"success": False, "error": "User not found or inactive"}
+
+            user.set_password(new_password)
+            user.failed_login_attempts = 0
+            user.account_locked_until = None
+            db.session.commit()
+            return {"success": True, "message": "Password reset successfully"}
+        except jwt.ExpiredSignatureError:
+            return {"success": False, "error": "Reset token has expired"}
+        except jwt.InvalidTokenError:
+            return {"success": False, "error": "Invalid reset token"}
+        except Exception as e:
+            db.session.rollback()
+            return {"success": False, "error": str(e)}
+
 
 def token_required(f: Callable) -> Callable:
     @wraps(f)
@@ -274,7 +353,13 @@ def rate_limit(limit: int = 100, window: int = 3600) -> Callable:
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            key = request.remote_addr or "unknown"
+            # Keyed by endpoint + IP, not just IP: otherwise every
+            # @rate_limit route (register, login, change-password,
+            # forgot-password, reset-password, ...) shares one global
+            # per-IP counter, so a burst against one endpoint can
+            # incorrectly lock a user out of a completely different one.
+            ip = request.remote_addr or "unknown"
+            key = f"{f.__module__}.{f.__name__}:{ip}"
             if not _rate_limiter.is_allowed(key, limit, window):
                 return (
                     jsonify(

@@ -124,7 +124,7 @@ export const getErrorMessage = (
 
 // Format large numbers compactly (e.g. 12,345 -> 12.3K)
 export const formatCompactNumber = (value, locale = "en-US") => {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
   return new Intl.NumberFormat(locale, {
     notation: "compact",
     maximumFractionDigits: 2,

@@ -1,5 +1,5 @@
 """
-LSTM time-series model.  TensorFlow is an optional dependency — the class
+LSTM time-series model.  TensorFlow is an optional dependency - the class
 gracefully degrades to a statsmodels-based forecast when TF is absent.
 """
 
@@ -132,7 +132,7 @@ class LSTMModel:
                 self._save(asset_type, symbol)
                 return {"success": True, "backend": "tensorflow"}
             except Exception as exc:
-                logger.error("Keras training failed: %s — falling back", exc)
+                logger.error("Keras training failed: %s - falling back", exc)
 
         # Statsmodels fallback
         try:

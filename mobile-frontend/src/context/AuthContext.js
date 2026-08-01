@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
     try {
       if (token) await authAPI.logout();
     } catch (err) {
-      // Best-effort — always clear the local session regardless.
+      // Best-effort - always clear the local session regardless.
     } finally {
       await clearAuthState();
     }

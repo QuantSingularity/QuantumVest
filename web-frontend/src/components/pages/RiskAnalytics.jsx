@@ -210,7 +210,7 @@ const RiskAnalytics = () => {
             ) : !hasEnoughData ? (
               <EmptyState
                 title="Not enough history yet"
-                description={`${selectedPortfolio?.name || "This portfolio"} has ${returns.length} day(s) of return history — at least 10 are needed to run risk calculations. Check back once more daily snapshots accrue.`}
+                description={`${selectedPortfolio?.name || "This portfolio"} has ${returns.length} day(s) of return history - at least 10 are needed to run risk calculations. Check back once more daily snapshots accrue.`}
               />
             ) : (
               <p
@@ -241,7 +241,7 @@ const RiskAnalytics = () => {
                 value={
                   selectedPortfolio
                     ? `${(Math.abs(varResult.var) * selectedPortfolio.total_value).toFixed(2)} ${selectedPortfolio.currency}`
-                    : "—"
+                    : "-"
                 }
                 hint="On current portfolio value"
                 tone="trend-down"

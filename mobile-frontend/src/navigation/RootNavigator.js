@@ -14,6 +14,7 @@ import HomeScreen from "../screens/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 
 import AppNavigator from "./AppNavigator";
 import PortfolioDetailScreen from "../screens/PortfolioDetailScreen";
@@ -59,6 +60,10 @@ const RootNavigator = () => {
             <Stack.Screen
               name="ForgotPassword"
               component={ForgotPasswordScreen}
+            />
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
             />
           </Stack.Group>
         ) : (

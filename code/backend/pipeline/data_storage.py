@@ -27,7 +27,7 @@ class DataStorage:
 
     def save_stock_data(self, df: pd.DataFrame, symbol: str) -> str:
         if df is None or df.empty:
-            logger.warning("Empty DataFrame for %s — not saved.", symbol)
+            logger.warning("Empty DataFrame for %s - not saved.", symbol)
             return ""
         path = os.path.join(self._stock_dir, f"{symbol.lower()}.csv")
         try:
@@ -57,7 +57,7 @@ class DataStorage:
 
     def save_crypto_data(self, df: pd.DataFrame, symbol: str) -> str:
         if df is None or df.empty:
-            logger.warning("Empty DataFrame for %s — not saved.", symbol)
+            logger.warning("Empty DataFrame for %s - not saved.", symbol)
             return ""
         path = os.path.join(self._crypto_dir, f"{symbol.lower()}.csv")
         try:

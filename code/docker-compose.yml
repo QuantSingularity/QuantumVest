@@ -1,7 +1,18 @@
 version: "3.9"
 
+# Full-stack orchestration for QuantumVest: Postgres + Redis + Flask backend
+# + the built web frontend served via nginx. Bring the whole stack up with:
+#
+#   docker compose up --build
+#
+# Web UI:      http://localhost:3000
+# Backend API: http://localhost:5000/api/v1
+#
+# For local development with hot-reload on both sides, use
+# docker-compose.dev.yml instead (see its header comment for usage).
+
 services:
-  # ─── PostgreSQL Database ────────────────────────────────────────────────────
+  # ─── PostgreSQL Database ────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
     container_name: quantumvest_db
@@ -24,7 +35,7 @@ services:
     networks:
       - quantumvest_network
 
-  # ─── Redis Cache & Message Broker ───────────────────────────────────────────
+  # ─── Redis Cache ─────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: quantumvest_redis
@@ -49,10 +60,10 @@ services:
     networks:
       - quantumvest_network
 
-  # ─── Flask Backend API ───────────────────────────────────────────────────────
+  # ─── Flask Backend API ───────────────────────────────────────────────────
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: quantumvest_backend
     restart: unless-stopped
@@ -60,15 +71,9 @@ services:
       FLASK_ENV: docker
       DATABASE_URL: postgresql://quantumvest:${DB_PASSWORD:-quantumvest_secure_password}@db:5432/quantumvest
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-a-long-random-string}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production-different-from-secret-key}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      ENABLE_PORTFOLIO_OPTIMIZATION: "true"
-      ENABLE_REAL_TIME_DATA: "true"
-      ENABLE_ADVANCED_ANALYTICS: "true"
-      ENABLE_BLOCKCHAIN_FEATURES: "false"
       MAX_LOGIN_ATTEMPTS: "5"
       ACCOUNT_LOCKOUT_MINUTES: "30"
       LOG_LEVEL: INFO
@@ -94,52 +99,21 @@ services:
     networks:
       - quantumvest_network
 
-  # ─── Celery Worker (Background Tasks) ────────────────────────────────────────
-  celery_worker:
+  # ─── Web Frontend (built React/Vite app served via nginx) ───────────────
+  web-frontend:
     build:
-      context: .
+      context: ./web-frontend
       dockerfile: Dockerfile
-    container_name: quantumvest_celery
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api/v1}
+    container_name: quantumvest_web
     restart: unless-stopped
-    command: celery -A app.celery worker --loglevel=info --concurrency=2
-    environment:
-      FLASK_ENV: docker
-      DATABASE_URL: postgresql://quantumvest:${DB_PASSWORD:-quantumvest_secure_password}@db:5432/quantumvest
-      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-a-long-random-string}
-    volumes:
-      - model_data:/app/resources/models
-      - market_data:/app/resources/data
-      - cache_data:/app/resources/data_cache
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - quantumvest_network
-    profiles:
-      - full
-
-  # ─── Nginx Reverse Proxy ─────────────────────────────────────────────────────
-  nginx:
-    image: nginx:alpine
-    container_name: quantumvest_nginx
-    restart: unless-stopped
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "80:80"
-      - "443:443"
+      - "${WEB_PORT:-3000}:80"
     depends_on:
       - backend
     networks:
       - quantumvest_network
-    profiles:
-      - production
 
 volumes:
   postgres_data:

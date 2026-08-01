@@ -206,7 +206,7 @@ const RiskAnalyticsScreen = ({ navigation }) => {
 
               {!hasEnoughData ? (
                 <Text style={{ color: theme.colors.onSurfaceVariant }}>
-                  {selected?.name} has {returns.length} day(s) of history — at
+                  {selected?.name} has {returns.length} day(s) of history - at
                   least 10 are needed.
                 </Text>
               ) : (

@@ -4,7 +4,7 @@ import NetInfo from "@react-native-community/netinfo";
 
 // Shows a snackbar when connectivity is lost, and a brief confirmation when
 // it's restored. NetInfo was already a listed dependency but was never
-// wired up — this component previously did nothing.
+// wired up - this component previously did nothing.
 const NetworkStatus = () => {
   const [visible, setVisible] = useState(false);
   const [isConnected, setIsConnected] = useState(true);

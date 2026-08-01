@@ -20,7 +20,7 @@ class TestEncryptionService:
     def test_encrypt_is_deterministic_with_same_key(self):
         svc = EncryptionService(master_key="fixed-test-key")
         e1 = svc.encrypt("data")
-        # Fernet uses random IV — two encryptions differ but both decrypt correctly
+        # Fernet uses random IV - two encryptions differ but both decrypt correctly
         e2 = svc.encrypt("data")
         assert svc.decrypt(e1) == "data"
         assert svc.decrypt(e2) == "data"

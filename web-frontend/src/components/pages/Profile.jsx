@@ -74,7 +74,7 @@ const Profile = () => {
         year: "numeric",
         month: "long",
       })
-    : "—";
+    : "-";
 
   return (
     <div className="profile-page">

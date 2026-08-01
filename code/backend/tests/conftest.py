@@ -21,7 +21,7 @@ def app():
 
 @pytest.fixture(scope="function")
 def db(app):
-    """Function-scoped DB — fresh tables per test."""
+    """Function-scoped DB - fresh tables per test."""
     _db.create_all()
     yield _db
     _db.session.remove()

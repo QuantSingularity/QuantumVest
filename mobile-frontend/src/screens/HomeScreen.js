@@ -63,7 +63,7 @@ const HomeScreen = ({ navigation }) => {
         style={[styles.heroSubtitle, { color: theme.colors.onSurfaceVariant }]}
       >
         Portfolio construction, institutional-grade risk analytics, and
-        mean-variance optimization — all in one app built for serious investors.
+        mean-variance optimization - all in one app built for serious investors.
       </Text>
 
       <View style={styles.ctaRow}>

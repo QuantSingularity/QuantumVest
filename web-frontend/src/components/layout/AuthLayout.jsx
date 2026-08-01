@@ -35,7 +35,7 @@ const AuthLayout = ({ children, eyebrow = "Welcome to QuantumVest" }) => {
           <h1>Invest with clarity, backed by data.</h1>
           <p>
             One platform for portfolio construction, risk management, and market
-            intelligence — built for serious investors.
+            intelligence - built for serious investors.
           </p>
 
           <div className="auth-highlights">

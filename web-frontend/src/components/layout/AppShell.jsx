@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import Footer from "./Footer";
 
 const AppShell = ({ title, children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(
@@ -24,7 +23,6 @@ const AppShell = ({ title, children }) => {
       <div className={`content-wrapper ${sidebarOpen ? "sidebar-open" : ""}`}>
         <Header toggleSidebar={toggleSidebar} pageTitle={title} />
         <main className="main-content">{children}</main>
-        <Footer />
       </div>
     </div>
   );

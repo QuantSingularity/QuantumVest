@@ -1,4 +1,4 @@
-"""Integration tests — portfolio, transaction, watchlist endpoints."""
+"""Integration tests - portfolio, transaction, watchlist endpoints."""
 
 import json
 

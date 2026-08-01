@@ -130,7 +130,7 @@ const SettingsScreen = ({ navigation }) => {
               marginBottom: 8,
             }}
           >
-            Saved on this device — the backend doesn&apos;t send notification
+            Saved on this device - the backend doesn&apos;t send notification
             emails yet.
           </Text>
           <SettingsRow
@@ -195,7 +195,7 @@ const SettingsScreen = ({ navigation }) => {
             }
           >
             <Text style={{ color: theme.colors.onSurfaceVariant }}>
-              {user?.two_factor_enabled ? "On" : "—"}
+              {user?.two_factor_enabled ? "On" : "-"}
             </Text>
           </SettingsRow>
         </View>

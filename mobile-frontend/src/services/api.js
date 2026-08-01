@@ -116,6 +116,9 @@ export const authAPI = {
   changePassword: (data) => api.post("/auth/change-password", data),
   refreshToken: (refreshToken) =>
     api.post("/auth/refresh", { refresh_token: refreshToken }),
+  forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
+  resetPassword: (token, newPassword) =>
+    api.post("/auth/reset-password", { token, new_password: newPassword }),
 };
 
 // ─────────────────────────────────────────────────────────────

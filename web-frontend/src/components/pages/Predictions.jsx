@@ -58,7 +58,7 @@ const Predictions = () => {
             </>
           ) : (
             <>
-              <h4>Prediction engine — in research</h4>
+              <h4>Prediction engine - in research</h4>
               <p>
                 This page will show real, model-backed forecasts once the
                 inference API ships. Until then we won&apos;t fabricate numbers

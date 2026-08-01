@@ -12,7 +12,7 @@ export const toDailyReturns = (values = []) => {
 
 export const formatCurrency = (value, currency = "USD") => {
   const num = Number(value);
-  if (Number.isNaN(num)) return "—";
+  if (Number.isNaN(num)) return "-";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
@@ -22,14 +22,14 @@ export const formatCurrency = (value, currency = "USD") => {
 
 export const formatSignedPercent = (value, decimals = 2) => {
   const num = Number(value);
-  if (Number.isNaN(num) || value === null || value === undefined) return "—";
+  if (Number.isNaN(num) || value === null || value === undefined) return "-";
   const sign = num > 0 ? "+" : "";
   return `${sign}${num.toFixed(decimals)}%`;
 };
 
 export const formatNumber = (value, decimals = 2) => {
   const num = Number(value);
-  if (Number.isNaN(num)) return "—";
+  if (Number.isNaN(num)) return "-";
   return num.toFixed(decimals);
 };
 

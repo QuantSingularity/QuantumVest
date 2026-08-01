@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(config_name: str = None) -> Flask:
-    """Application factory — accepts an optional config name."""
+    """Application factory - accepts an optional config name."""
     app = Flask(__name__, static_folder=None)
 
     if config_name is None:

@@ -64,7 +64,7 @@ const Register = () => {
     setLoading(false);
 
     if (result.success) {
-      showToast("Account created — welcome to QuantumVest!", "success");
+      showToast("Account created - welcome to QuantumVest!", "success");
       navigate("/dashboard", { replace: true });
     } else {
       setErrors({ form: result.error });

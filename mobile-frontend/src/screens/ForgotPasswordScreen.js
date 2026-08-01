@@ -12,7 +12,7 @@ import {
   TextInput,
   useTheme,
 } from "react-native-paper";
-import api from "../services/api";
+import { authAPI } from "../services/api";
 import { validateEmail } from "../utils/errorHandler";
 
 const ForgotPasswordScreen = ({ navigation }) => {
@@ -28,7 +28,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setError("");
     setLoading(true);
     try {
-      await api.post("/auth/forgot-password", { email });
+      await authAPI.forgotPassword(email);
       setStatus("sent");
     } catch (err) {
       setStatus(err?.response?.status === 404 ? "unavailable" : "sent");
@@ -70,6 +70,13 @@ const ForgotPasswordScreen = ({ navigation }) => {
               style={styles.button}
             >
               Back to Sign In
+            </Button>
+            <Button
+              mode="text"
+              onPress={() => navigation.navigate("ResetPassword")}
+              style={{ marginTop: 8 }}
+            >
+              I already have a reset code
             </Button>
           </>
         )}

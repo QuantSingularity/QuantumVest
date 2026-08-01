@@ -143,7 +143,7 @@ const Settings = () => {
             <p className="settings-row-desc">
               {user?.two_factor_enabled
                 ? "Enabled on your account."
-                : "Not yet available — coming soon."}
+                : "Not yet available - coming soon."}
             </p>
           </div>
           <span

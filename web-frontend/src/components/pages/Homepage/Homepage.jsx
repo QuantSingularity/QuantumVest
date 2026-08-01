@@ -79,7 +79,7 @@ const FEATURES = [
 const STEPS = [
   {
     title: "Create your account",
-    description: "Sign up in under a minute — no credit card required.",
+    description: "Sign up in under a minute - no credit card required.",
   },
   {
     title: "Build a portfolio",
@@ -139,7 +139,7 @@ const Homepage = () => {
             transition={{ duration: 0.6, delay: 0.15 }}
           >
             Portfolio construction, institutional-grade risk analytics, and
-            mean-variance optimization — all in one platform built for serious
+            mean-variance optimization - all in one platform built for serious
             investors.
           </motion.p>
           <motion.div

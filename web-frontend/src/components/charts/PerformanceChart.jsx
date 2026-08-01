@@ -5,7 +5,7 @@ import EmptyState from "../ui/EmptyState";
 
 // Renders a portfolio value history line chart. Gracefully shows an empty
 // state when the backend has no PortfolioPerformance snapshots yet (common
-// for brand-new portfolios — daily snapshots accrue over time).
+// for brand-new portfolios - daily snapshots accrue over time).
 const PerformanceChart = ({ dates = [], values = [], height = 260 }) => {
   const isDark =
     document.documentElement.getAttribute("data-theme") !== "light";

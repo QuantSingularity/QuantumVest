@@ -196,7 +196,7 @@ const WatchlistScreen = () => {
                   marginTop: 24,
                 }}
               >
-                No assets yet — search above to add one.
+                No assets yet - search above to add one.
               </Text>
             }
             renderItem={({ item }) => (

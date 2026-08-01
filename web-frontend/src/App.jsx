@@ -20,6 +20,7 @@ const NotFound = lazy(() => import("./components/pages/NotFound"));
 const Login = lazy(() => import("./components/pages/Login"));
 const Register = lazy(() => import("./components/pages/Register"));
 const ForgotPassword = lazy(() => import("./components/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./components/pages/ResetPassword"));
 
 const Dashboard = lazy(() => import("./components/pages/Dashboard"));
 const Portfolios = lazy(() => import("./components/pages/Portfolios"));
@@ -34,7 +35,7 @@ const Settings = lazy(() => import("./components/pages/Settings"));
 
 const PageFallback = () => <LoadingSpinner fullScreen message="Loading..." />;
 
-// Wraps a protected page with the authenticated app shell (sidebar/header/footer)
+// Wraps a protected page with the authenticated app shell (sidebar/header)
 const withShell = (title, Component) => (
   <ProtectedRoute>
     <AppShell title={title}>
@@ -105,6 +106,14 @@ function App() {
               element={
                 <PublicOnlyRoute>
                   <ForgotPassword />
+                </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/reset-password"
+              element={
+                <PublicOnlyRoute>
+                  <ResetPassword />
                 </PublicOnlyRoute>
               }
             />

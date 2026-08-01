@@ -1,5 +1,5 @@
 """
-Crypto data fetcher — yfinance backend (appends -USD suffix automatically).
+Crypto data fetcher - yfinance backend (appends -USD suffix automatically).
 """
 
 import logging

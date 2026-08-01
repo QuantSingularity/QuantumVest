@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class RiskManagementService:
-    """Portfolio risk assessment — operates on numpy return arrays."""
+    """Portfolio risk assessment - operates on numpy return arrays."""
 
     @staticmethod
     def calculate_var(

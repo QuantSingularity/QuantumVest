@@ -23,7 +23,7 @@ const AllocationChart = ({ holdings = [], height = 260 }) => {
       (a, b) => (b.market_value || 0) - (a.market_value || 0),
     );
     return {
-      labels: sorted.map((h) => h.asset?.symbol || "—"),
+      labels: sorted.map((h) => h.asset?.symbol || "-"),
       datasets: [
         {
           data: sorted.map((h) => Number(h.market_value) || 0),

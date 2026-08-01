@@ -216,7 +216,7 @@ const Header = ({ toggleSidebar, pageTitle = "Dashboard" }) => {
                   <div className="notif-dropdown-body">
                     {notifications.length === 0 ? (
                       <p className="notif-empty">
-                        You&apos;re all caught up — nothing new yet.
+                        You&apos;re all caught up - nothing new yet.
                       </p>
                     ) : (
                       notifications.slice(0, 8).map((n) => (

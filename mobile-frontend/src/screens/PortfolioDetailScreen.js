@@ -216,7 +216,7 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
                 value={
                   portfolio.sharpe_ratio
                     ? formatNumber(portfolio.sharpe_ratio)
-                    : "—"
+                    : "-"
                 }
               />
             </View>
@@ -264,7 +264,7 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
               </View>
               {!portfolio.holdings || portfolio.holdings.length === 0 ? (
                 <Text style={{ color: theme.colors.onSurfaceVariant }}>
-                  No holdings yet — add a transaction below.
+                  No holdings yet - add a transaction below.
                 </Text>
               ) : (
                 portfolio.holdings.map((h) => (
@@ -455,7 +455,7 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
                   <Text
                     style={{ color: theme.colors.onSurface, fontWeight: "600" }}
                   >
-                    {selectedAsset.symbol} — {selectedAsset.name}
+                    {selectedAsset.symbol} - {selectedAsset.name}
                   </Text>
                   <Button compact onPress={() => setSelectedAsset(null)}>
                     Change
@@ -484,7 +484,7 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
                 onChangeText={setPrice}
               />
               <HelperText type="info" visible>
-                Fees default to 0 — edit later from the web app if needed.
+                Fees default to 0 - edit later from the web app if needed.
               </HelperText>
             </ScrollView>
           </Dialog.ScrollArea>

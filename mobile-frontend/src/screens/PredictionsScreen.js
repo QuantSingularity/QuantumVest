@@ -86,7 +86,7 @@ const PredictionsScreen = () => {
                   variant="titleMedium"
                   style={{ color: theme.colors.onSurface }}
                 >
-                  Prediction engine — in research
+                  Prediction engine - in research
                 </Text>
                 <Text
                   variant="bodyMedium"

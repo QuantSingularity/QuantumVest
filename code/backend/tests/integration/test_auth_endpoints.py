@@ -1,4 +1,4 @@
-"""Integration tests — authentication endpoints."""
+"""Integration tests - authentication endpoints."""
 
 import json
 
@@ -182,3 +182,86 @@ class TestTokenRefresh:
             content_type="application/json",
         )
         assert resp.status_code == 401
+
+
+class TestForgotPassword:
+    def test_forgot_password_known_email(self, client, test_user):
+        resp = client.post(
+            "/api/v1/auth/forgot-password",
+            data=json.dumps({"email": test_user.email}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["success"] is True
+
+    def test_forgot_password_unknown_email_same_response(self, client):
+        """Must not reveal whether an email is registered."""
+        resp = client.post(
+            "/api/v1/auth/forgot-password",
+            data=json.dumps({"email": "nobody@quantumvest.io"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["success"] is True
+
+    def test_forgot_password_missing_email(self, client):
+        resp = client.post(
+            "/api/v1/auth/forgot-password",
+            data=json.dumps({}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+
+
+class TestResetPassword:
+    def test_reset_password_success(self, client, test_user, app):
+        with app.app_context():
+            from app.core.auth import AuthService
+
+            token = AuthService.generate_reset_token(test_user.id)
+
+        resp = client.post(
+            "/api/v1/auth/reset-password",
+            data=json.dumps({"token": token, "new_password": "NewSecurePass1"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["success"] is True
+
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            data=json.dumps(
+                {"username": test_user.username, "password": "NewSecurePass1"}
+            ),
+            content_type="application/json",
+        )
+        assert login_resp.status_code == 200
+
+    def test_reset_password_invalid_token(self, client):
+        resp = client.post(
+            "/api/v1/auth/reset-password",
+            data=json.dumps({"token": "garbage", "new_password": "NewSecurePass1"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+
+    def test_reset_password_weak_password(self, client, test_user, app):
+        with app.app_context():
+            from app.core.auth import AuthService
+
+            token = AuthService.generate_reset_token(test_user.id)
+
+        resp = client.post(
+            "/api/v1/auth/reset-password",
+            data=json.dumps({"token": token, "new_password": "weak"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 400
+
+    def test_reset_password_missing_fields(self, client):
+        resp = client.post(
+            "/api/v1/auth/reset-password",
+            data=json.dumps({"token": "x"}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 400

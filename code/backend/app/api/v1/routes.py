@@ -1,5 +1,5 @@
 """
-REST API routes — /api/v1/*
+REST API routes - /api/v1/*
 """
 
 import logging
@@ -122,6 +122,50 @@ def refresh_token() -> Tuple[Response, int]:
     except Exception as exc:
         logger.error("refresh error: %s", exc)
         return jsonify({"success": False, "error": "Token refresh failed"}), 500
+
+
+@api_bp.route("/auth/forgot-password", methods=["POST"])
+@rate_limit(limit=5, window=300)
+def forgot_password() -> Tuple[Response, int]:
+    try:
+        data = request.get_json()
+        if not data or "email" not in data:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+        result = AuthService.request_password_reset(data["email"])
+        return jsonify(result), 200
+    except Exception as exc:
+        logger.error("forgot_password error: %s", exc)
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": (
+                        "If an account exists for that email, a password "
+                        "reset link has been sent."
+                    ),
+                }
+            ),
+            200,
+        )
+
+
+@api_bp.route("/auth/reset-password", methods=["POST"])
+@rate_limit(limit=5, window=300)
+def reset_password() -> Tuple[Response, int]:
+    try:
+        data = request.get_json()
+        if not data or not all(k in data for k in ("token", "new_password")):
+            return (
+                jsonify(
+                    {"success": False, "error": "token and new_password are required"}
+                ),
+                400,
+            )
+        result = AuthService.reset_password(data["token"], data["new_password"])
+        return (jsonify(result), 200) if result["success"] else (jsonify(result), 400)
+    except Exception as exc:
+        logger.error("reset_password error: %s", exc)
+        return jsonify({"success": False, "error": "Failed to reset password"}), 500
 
 
 @api_bp.route("/auth/profile", methods=["GET"])

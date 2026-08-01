@@ -5,7 +5,7 @@ import "../../styles/StaticPages.css";
 const CONTACT_DETAILS = [
   { icon: "📧", label: "Email", value: "support@quantumvest.io" },
   { icon: "📞", label: "Phone", value: "+1 (800) QV-INVEST" },
-  { icon: "🕒", label: "Hours", value: "Mon–Fri, 9 AM – 6 PM EST" },
+  { icon: "🕒", label: "Hours", value: "Mon-Fri, 9 AM to 6 PM EST" },
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -42,7 +42,7 @@ const Contact = () => {
     if (Object.keys(errs).length) return setErrors(errs);
 
     const mailto = `mailto:support@quantumvest.io?subject=${encodeURIComponent(form.subject)}&body=${encodeURIComponent(
-      `${form.message}\n\n— ${form.name} (${form.email})`,
+      `${form.message}\n\n- ${form.name} (${form.email})`,
     )}`;
     window.location.href = mailto;
     setSent(true);

@@ -1,5 +1,5 @@
 """
-Prediction service — wraps the LSTM/ARIMA model with caching and data fetching.
+Prediction service - wraps the LSTM/ARIMA model with caching and data fetching.
 """
 
 import logging

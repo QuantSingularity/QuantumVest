@@ -18,9 +18,6 @@ const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      // The current QuantumVest backend does not yet expose a password-reset
-      // endpoint. We still attempt the call so this page starts working the
-      // moment one is added, without any UI changes.
       await api.post("/auth/forgot-password", { email });
       setStatus("sent");
     } catch (err) {
@@ -28,7 +25,7 @@ const ForgotPassword = () => {
         setStatus("unavailable");
       } else {
         // For any other outcome we intentionally don't reveal whether the
-        // email exists — but we also won't claim success we can't back up.
+        // email exists - but we also won't claim success we can't back up.
         setStatus("sent");
       }
     } finally {

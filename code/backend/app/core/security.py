@@ -180,7 +180,7 @@ _PERMISSIONS: Dict[UserRole, Set[str]] = {
 
 
 class AuthorizationService:
-    """RBAC — check permissions and resource ownership."""
+    """RBAC - check permissions and resource ownership."""
 
     @staticmethod
     def has_permission(user_role: UserRole, permission: str) -> bool:

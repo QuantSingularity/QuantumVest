@@ -1,4 +1,4 @@
-"""Integration tests — health check and risk endpoints."""
+"""Integration tests - health check and risk endpoints."""
 
 import json
 

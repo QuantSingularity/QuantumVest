@@ -4,7 +4,7 @@ import React, { createContext, useState } from "react";
 export const NotificationContext = createContext();
 
 // Notifications start empty and are populated by real actions across the
-// app (transactions, portfolio changes, security events) — see
+// app (transactions, portfolio changes, security events) - see
 // useNotifications().addNotification() call sites.
 const SEED_NOTIFICATIONS = [];
 

@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }) => {
         await authAPI.logout();
       }
     } catch (error) {
-      // Best-effort — clear the local session regardless of server response.
+      // Best-effort - clear the local session regardless of server response.
     } finally {
       clearSession();
     }

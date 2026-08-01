@@ -1,5 +1,5 @@
 """
-Stock data fetcher — yfinance backend with a clean DataFrame contract.
+Stock data fetcher - yfinance backend with a clean DataFrame contract.
 """
 
 import logging

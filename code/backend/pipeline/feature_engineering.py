@@ -1,5 +1,5 @@
 """
-Feature engineering — technical indicators added to an OHLCV DataFrame.
+Feature engineering - technical indicators added to an OHLCV DataFrame.
 """
 
 import logging
