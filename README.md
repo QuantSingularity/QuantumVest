@@ -9,7 +9,7 @@
 QuantumVest is an advanced predictive investment analytics platform that leverages artificial intelligence, blockchain technology, and quantitative finance models to provide retail investors with actionable insights for smarter investment decisions.
 
 <div align="center">
-  <img src="docs/images/QuantumVest_dashboard.bmp" alt="QuantumVest Dashboard" width="80%">
+  <img src="docs/images/homepage.bmp" alt="QuantumVest HomePage" width="80%">
 </div>
 
 ## Table of Contents
