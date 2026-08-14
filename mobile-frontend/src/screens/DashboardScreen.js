@@ -127,6 +127,10 @@ const DashboardScreen = ({ navigation }) => {
           subtitle="Here's your overview"
         />
         <Appbar.Action
+          icon="link-variant"
+          onPress={() => navigation.navigate("Blockchain")}
+        />
+        <Appbar.Action
           icon="cog-outline"
           onPress={() => navigation.navigate("Settings")}
         />

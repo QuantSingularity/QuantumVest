@@ -30,6 +30,7 @@ const PortfolioDetail = lazy(
 const Watchlist = lazy(() => import("./components/pages/Watchlist"));
 const RiskAnalytics = lazy(() => import("./components/pages/RiskAnalytics"));
 const Predictions = lazy(() => import("./components/pages/Predictions"));
+const Blockchain = lazy(() => import("./components/pages/Blockchain"));
 const Profile = lazy(() => import("./components/pages/Profile"));
 const Settings = lazy(() => import("./components/pages/Settings"));
 
@@ -142,6 +143,10 @@ function App() {
             <Route
               path="/predictions"
               element={withShell("AI Predictions", Predictions)}
+            />
+            <Route
+              path="/blockchain"
+              element={withShell("Blockchain", Blockchain)}
             />
             <Route path="/profile" element={withShell("My Profile", Profile)} />
             <Route path="/settings" element={withShell("Settings", Settings)} />

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, act } from "@testing-library/react-native";
+import { render, act, fireEvent } from "@testing-library/react-native";
 import { Text } from "react-native";
 import ErrorBoundary from "../ErrorBoundary";
 
@@ -69,12 +69,21 @@ describe("ErrorBoundary", () => {
     expect(getByText("Oops! Something went wrong")).toBeTruthy();
     expect(boundaryRef.state.hasError).toBe(true);
 
-    await act(async () => {
-      boundaryRef.handleReset();
-    });
-    expect(boundaryRef.state.hasError).toBe(false);
-
-    // With hasError cleared, rendering non-throwing children succeeds.
+    // BUGFIX: this test previously called `boundaryRef.handleReset()`
+    // directly while the child was still configured to throw
+    // (`shouldThrow={true}`). Clearing `hasError` makes the boundary
+    // render `this.props.children` again, so the still-throwing child
+    // throws immediately, and getDerivedStateFromError re-catches it
+    // within the same act() call - hasError snaps straight back to
+    // `true` before the assertion ever sees it false. That's correct,
+    // expected error-boundary behavior, not a bug: resetting only makes
+    // sense once whatever caused the error has actually been fixed.
+    //
+    // Mirror that here by updating the child to stop throwing first (the
+    // fallback UI still renders at this point, since state.hasError is
+    // still true - only the props/children changed), then actually
+    // press the "Try Again" button, matching what this test claims to
+    // verify.
     rerender(
       <ErrorBoundary
         ref={(r) => {
@@ -84,6 +93,13 @@ describe("ErrorBoundary", () => {
         <ThrowError shouldThrow={false} />
       </ErrorBoundary>,
     );
+    expect(getByText("Oops! Something went wrong")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByText("Try Again"));
+    });
+
+    expect(boundaryRef.state.hasError).toBe(false);
     expect(getByText("No Error")).toBeTruthy();
   });
 });

@@ -6,9 +6,16 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Tuple
 
-from app.core.auth import AuthService, premium_required, rate_limit, token_required
+from app.core.auth import (
+    AuthService,
+    admin_required,
+    premium_required,
+    rate_limit,
+    token_required,
+)
 from app.extensions import db
 from app.models.financial import Asset, Watchlist, WatchlistItem
+from app.services.blockchain import BlockchainService
 from app.services.portfolio import PortfolioService
 from flask import Blueprint, Response, jsonify, request
 from sqlalchemy import text
@@ -33,12 +40,21 @@ def health_check() -> Response:
         db_ok = True
     except Exception:
         pass
+
+    # Lightweight boolean only - the authenticated /blockchain/status
+    # endpoint below has connection/contract details.
+    blockchain_ok = False
+    try:
+        blockchain_ok = BlockchainService.is_connected()
+    except Exception:
+        pass
+
     return jsonify(
         {
             "status": "healthy" if db_ok else "degraded",
             "version": "2.0.0",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "services": {"database": db_ok},
+            "services": {"database": db_ok, "blockchain": blockchain_ok},
         }
     )
 
@@ -657,3 +673,91 @@ def risk_metrics(current_user: Any) -> Tuple[Response, int]:
     except Exception as exc:
         logger.error("risk_metrics error: %s", exc)
         return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ─────────────────────────────────────────────────────────────
+# Blockchain
+# ─────────────────────────────────────────────────────────────
+# Web3 gateway to the contracts in ../../blockchain - see
+# app/services/blockchain.py for connection/address resolution details.
+
+
+@api_bp.route("/blockchain/status", methods=["GET"])
+@token_required
+def blockchain_status(current_user: Any) -> Tuple[Response, int]:
+    status = BlockchainService.status()
+    return jsonify({"success": True, **status}), 200
+
+
+@api_bp.route("/blockchain/trend", methods=["GET"])
+@token_required
+def blockchain_trend(current_user: Any) -> Tuple[Response, int]:
+    """Latest Chainlink-fed price, and optionally a simple moving average
+    if ?window=N is supplied (see TrendAnalysis.sol)."""
+    window = request.args.get("window", type=int)
+
+    result = BlockchainService.get_price_trend()
+    if not result["success"]:
+        return jsonify(result), 502
+
+    if window:
+        ma_result = BlockchainService.get_moving_average(window)
+        if ma_result["success"]:
+            result["moving_average"] = ma_result["moving_average"]
+            result["window"] = window
+
+    return jsonify(result), 200
+
+
+@api_bp.route("/blockchain/market-data/<ticker>", methods=["GET"])
+@token_required
+def blockchain_market_data(current_user: Any, ticker: str) -> Tuple[Response, int]:
+    """On-chain market data history recorded via DataTracking.sol."""
+    result = BlockchainService.get_historical_market_data(ticker.upper())
+    return (jsonify(result), 200) if result["success"] else (jsonify(result), 502)
+
+
+@api_bp.route("/blockchain/market-data", methods=["POST"])
+@token_required
+@admin_required
+def record_blockchain_market_data(current_user: Any) -> Tuple[Response, int]:
+    """Records a market data point on-chain. Admin-only: this sends a real
+    (gas-costing) transaction signed by the configured contract-owner key."""
+    try:
+        data = request.get_json()
+        required = ["ticker", "price", "volume"]
+        if not data or not all(f in data for f in required):
+            return jsonify({"success": False, "error": f"Required: {required}"}), 400
+
+        result = BlockchainService.record_market_data(
+            ticker=str(data["ticker"]).upper(),
+            price=int(data["price"]),
+            volume=int(data["volume"]),
+        )
+        return (jsonify(result), 201) if result["success"] else (jsonify(result), 502)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"success": False, "error": f"Invalid input: {exc}"}), 400
+    except Exception as exc:
+        logger.error("record_blockchain_market_data error: %s", exc)
+        return (
+            jsonify({"success": False, "error": "Failed to record market data"}),
+            500,
+        )
+
+
+@api_bp.route("/blockchain/token/balance/<address>", methods=["GET"])
+@token_required
+def blockchain_token_balance(current_user: Any, address: str) -> Tuple[Response, int]:
+    """QuantumVestToken (QVT) balance for a given wallet address."""
+    result = BlockchainService.get_token_balance(address)
+    return (jsonify(result), 200) if result["success"] else (jsonify(result), 400)
+
+
+@api_bp.route("/blockchain/oracle/<asset_address>", methods=["GET"])
+@token_required
+def blockchain_oracle_price(
+    current_user: Any, asset_address: str
+) -> Tuple[Response, int]:
+    """On-chain oracle price for an asset (see QuantumVestOracle.sol)."""
+    result = BlockchainService.get_oracle_price(asset_address)
+    return (jsonify(result), 200) if result["success"] else (jsonify(result), 404)

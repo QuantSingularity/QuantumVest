@@ -20,6 +20,7 @@ import AppNavigator from "./AppNavigator";
 import PortfolioDetailScreen from "../screens/PortfolioDetailScreen";
 import PredictionsScreen from "../screens/PredictionsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import BlockchainScreen from "../screens/BlockchainScreen";
 
 import { darkPalette, lightPalette, brand } from "../theme/tokens";
 
@@ -75,6 +76,7 @@ const RootNavigator = () => {
             />
             <Stack.Screen name="Predictions" component={PredictionsScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Blockchain" component={BlockchainScreen} />
           </Stack.Group>
         )}
       </Stack.Navigator>

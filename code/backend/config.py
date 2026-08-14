@@ -50,6 +50,58 @@ class Config:
     MODEL_PATH: str = os.environ.get("MODEL_PATH", "resources/models")
     DATA_PATH: str = os.environ.get("DATA_PATH", "resources/data")
 
+    # ─── Blockchain (Web3 gateway to ../blockchain) ─────────────────────
+    # See app/services/blockchain.py. Everything here is optional: with no
+    # WEB3_PROVIDER_URI reachable, BlockchainService degrades gracefully
+    # and the rest of the app is unaffected.
+    BLOCKCHAIN_ENABLED: bool = (
+        os.environ.get("BLOCKCHAIN_ENABLED", "true").lower() == "true"
+    )
+    WEB3_PROVIDER_URI: str = os.environ.get(
+        "WEB3_PROVIDER_URI", "http://localhost:8545"
+    )
+
+    # Directory of Truffle build artifacts (ABI + per-network deployed
+    # address), as produced by `truffle compile` / `truffle migrate` in
+    # ../blockchain. Defaults to the sibling blockchain/build/contracts
+    # directory for local (non-Docker) development; docker-compose.yml
+    # overrides this to a shared volume populated by the blockchain-migrate
+    # service.
+    BLOCKCHAIN_ARTIFACTS_DIR: str = os.environ.get(
+        "BLOCKCHAIN_ARTIFACTS_DIR",
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "blockchain",
+            "build",
+            "contracts",
+        ),
+    )
+
+    # Explicit contract address overrides. Take precedence over whatever a
+    # Truffle artifact says for the connected network - required for any
+    # network the artifacts weren't built against (e.g. a real testnet/
+    # mainnet deployment where build/ isn't shipped alongside the backend).
+    DATA_TRACKING_CONTRACT_ADDRESS: Optional[str] = os.environ.get(
+        "DATA_TRACKING_CONTRACT_ADDRESS"
+    )
+    TREND_ANALYSIS_CONTRACT_ADDRESS: Optional[str] = os.environ.get(
+        "TREND_ANALYSIS_CONTRACT_ADDRESS"
+    )
+    QUANTUMVEST_TOKEN_CONTRACT_ADDRESS: Optional[str] = os.environ.get(
+        "QUANTUMVEST_TOKEN_CONTRACT_ADDRESS"
+    )
+    QUANTUMVEST_ORACLE_CONTRACT_ADDRESS: Optional[str] = os.environ.get(
+        "QUANTUMVEST_ORACLE_CONTRACT_ADDRESS"
+    )
+
+    # Private key for the account that signs write transactions (e.g.
+    # DataTracking.addDataPoint). Must be the DataTracking contract's
+    # owner account. Never set this to a real-funds key outside a secrets
+    # manager; unset by default so write operations are disabled until
+    # deliberately configured.
+    BLOCKCHAIN_PRIVATE_KEY: Optional[str] = os.environ.get("BLOCKCHAIN_PRIVATE_KEY")
+
 
 class DevelopmentConfig(Config):
     DEBUG: bool = True

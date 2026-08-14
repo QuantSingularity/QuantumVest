@@ -60,6 +60,63 @@ services:
     networks:
       - quantumvest_network
 
+  # ─── Blockchain (ganache dev chain + Truffle migration) ─────────────────
+  # Opt-in via `docker compose --profile blockchain up`. The `backend`
+  # service always has WEB3_PROVIDER_URI/BLOCKCHAIN_ARTIFACTS_DIR wired up
+  # so that when this profile *is* active, blockchain features work
+  # automatically - but backend starts and runs fine without it too (see
+  # app/services/blockchain.py's graceful-degradation design).
+  ganache:
+    image: trufflesuite/ganache:latest
+    container_name: quantumvest_ganache
+    restart: unless-stopped
+    # Deterministic accounts + pinned chain/network id: dev/demo
+    # convenience only, never use --wallet.deterministic outside local
+    # development. Network id is pinned because Truffle keys the deployed
+    # addresses it writes into build/contracts/*.json by net_version, and
+    # backend/app/services/blockchain.py resolves addresses that way too.
+    command: >
+      --port 8545
+      --chain.chainId 1337
+      --chain.networkId 1337
+      --wallet.deterministic
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:8545',r=>process.exit(0)).on('error',()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles: ["blockchain"]
+    networks:
+      - quantumvest_network
+
+  blockchain-migrate:
+    image: node:20-alpine
+    container_name: quantumvest_blockchain_migrate
+    working_dir: /blockchain
+    environment:
+      GANACHE_HOST: ganache
+      GANACHE_PORT: "8545"
+    volumes:
+      - ./blockchain:/blockchain
+      - blockchain_node_modules:/blockchain/node_modules
+      - blockchain_build:/blockchain/build
+    command: sh -c "npm install && npx truffle migrate --network docker --reset"
+    depends_on:
+      ganache:
+        condition: service_healthy
+    profiles: ["blockchain"]
+    networks:
+      - quantumvest_network
+
   # ─── Flask Backend API ───────────────────────────────────────────────────
   backend:
     build:
@@ -77,12 +134,24 @@ services:
       MAX_LOGIN_ATTEMPTS: "5"
       ACCOUNT_LOCKOUT_MINUTES: "30"
       LOG_LEVEL: INFO
+      # Only reachable/meaningful when the blockchain profile is active;
+      # otherwise BlockchainService just reports itself as disconnected.
+      WEB3_PROVIDER_URI: http://ganache:8545
+      BLOCKCHAIN_ARTIFACTS_DIR: /app/blockchain_build
+      DATA_TRACKING_CONTRACT_ADDRESS: ${DATA_TRACKING_CONTRACT_ADDRESS:-}
+      TREND_ANALYSIS_CONTRACT_ADDRESS: ${TREND_ANALYSIS_CONTRACT_ADDRESS:-}
+      QUANTUMVEST_TOKEN_CONTRACT_ADDRESS: ${QUANTUMVEST_TOKEN_CONTRACT_ADDRESS:-}
+      QUANTUMVEST_ORACLE_CONTRACT_ADDRESS: ${QUANTUMVEST_ORACLE_CONTRACT_ADDRESS:-}
+      BLOCKCHAIN_PRIVATE_KEY: ${BLOCKCHAIN_PRIVATE_KEY:-}
     volumes:
       - model_data:/app/resources/models
       - market_data:/app/resources/data
       - cache_data:/app/resources/data_cache
       - app_logs:/app/logs
       - uploads:/app/uploads
+      # Read-only: populated by blockchain-migrate when the blockchain
+      # profile is active. Empty (and harmless) otherwise.
+      - blockchain_build:/app/blockchain_build:ro
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     depends_on:
@@ -129,6 +198,10 @@ volumes:
   app_logs:
     driver: local
   uploads:
+    driver: local
+  blockchain_build:
+    driver: local
+  blockchain_node_modules:
     driver: local
 
 networks:

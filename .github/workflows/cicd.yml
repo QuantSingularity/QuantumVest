@@ -140,5 +140,89 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: web-frontend/dist/
+          path: web-frontend/build/
+          retention-days: 7
+
+  # ============================================================
+  # Job 4 -- Blockchain Contracts (Compile & Test)
+  # ============================================================
+  blockchain_tests:
+    name: Blockchain Contracts
+    runs-on: ubuntu-latest
+    needs: code_quality
+
+    defaults:
+      run:
+        working-directory: code/blockchain
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: code/blockchain/package-lock.json
+
+      - name: Install dependencies
+        # `npm ci` fails here on a known npm issue: the lockfile's nested
+        # ganache -> fsevents entry (a macOS-only, install-time-optional
+        # native dependency, unused on Linux runners either way) is missing
+        # the `optional` marker npm needs to skip it gracefully during a
+        # strict `ci` install, and `--omit=optional` doesn't route around
+        # it either. `npm install` resolves the exact same tree without
+        # hitting that check.
+        run: npm install
+
+      - name: Compile contracts
+        run: npx truffle compile
+
+      - name: Start ganache, run tests, and verify the migration
+        # Deliberately one step (not split across "start ganache" / "run
+        # tests" steps): a background process started via `&` in one
+        # step's script is not guaranteed to still be running by the time
+        # a later step's script starts, so start/wait/test/migrate all
+        # happen together here instead.
+        run: |
+          set -euo pipefail
+
+          npx ganache \
+            --port 8545 \
+            --chain.chainId 1337 \
+            --chain.networkId 1337 \
+            --wallet.deterministic \
+            > ganache.log 2>&1 &
+
+          echo "=== Waiting for ganache to accept connections ==="
+          ready=false
+          for i in $(seq 1 30); do
+            if curl -s -X POST -H "Content-Type: application/json" \
+              --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+              http://127.0.0.1:8545 | grep -q result; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != true ]; then
+            echo "Ganache did not become ready in time." >&2
+            cat ganache.log
+            exit 1
+          fi
+          echo "Ganache is ready."
+
+          echo "=== Running contract test suite ==="
+          npx truffle test --network development
+
+          echo "=== Migrating contracts (verifies the full deploy path) ==="
+          npx truffle migrate --network development --reset
+
+      - name: Upload contract build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blockchain-contracts-build
+          path: code/blockchain/build/contracts/
           retention-days: 7

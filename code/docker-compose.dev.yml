@@ -10,6 +10,50 @@ version: "3.9"
 # Backend API:         http://localhost:5000/api/v1
 
 services:
+  # Opt-in via `docker compose -f docker-compose.dev.yml --profile
+  # blockchain up`. See docker-compose.yml for the same services with
+  # fuller comments.
+  ganache:
+    image: trufflesuite/ganache:latest
+    container_name: quantumvest_ganache_dev
+    command: >
+      --port 8545
+      --chain.chainId 1337
+      --chain.networkId 1337
+      --wallet.deterministic
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:8545',r=>process.exit(0)).on('error',()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    profiles: ["blockchain"]
+
+  blockchain-migrate:
+    image: node:20-alpine
+    container_name: quantumvest_blockchain_migrate_dev
+    working_dir: /blockchain
+    environment:
+      GANACHE_HOST: ganache
+      GANACHE_PORT: "8545"
+    volumes:
+      - ./blockchain:/blockchain
+      - blockchain_node_modules_dev:/blockchain/node_modules
+      - blockchain_build_dev:/blockchain/build
+    command: sh -c "npm install && npx truffle migrate --network docker --reset"
+    depends_on:
+      ganache:
+        condition: service_healthy
+    profiles: ["blockchain"]
+
   backend:
     build:
       context: ./backend
@@ -24,10 +68,22 @@ services:
       JWT_SECRET_KEY: dev-jwt-secret-key-not-for-production
       CORS_ORIGINS: "http://localhost:3000"
       CACHE_TYPE: SimpleCache
+      # Only reachable/meaningful with `--profile blockchain` active;
+      # otherwise BlockchainService just reports itself as disconnected.
+      WEB3_PROVIDER_URI: http://ganache:8545
+      BLOCKCHAIN_ARTIFACTS_DIR: /app/blockchain_build
+      DATA_TRACKING_CONTRACT_ADDRESS: ${DATA_TRACKING_CONTRACT_ADDRESS:-}
+      TREND_ANALYSIS_CONTRACT_ADDRESS: ${TREND_ANALYSIS_CONTRACT_ADDRESS:-}
+      QUANTUMVEST_TOKEN_CONTRACT_ADDRESS: ${QUANTUMVEST_TOKEN_CONTRACT_ADDRESS:-}
+      QUANTUMVEST_ORACLE_CONTRACT_ADDRESS: ${QUANTUMVEST_ORACLE_CONTRACT_ADDRESS:-}
+      BLOCKCHAIN_PRIVATE_KEY: ${BLOCKCHAIN_PRIVATE_KEY:-}
     volumes:
       - ./backend:/app
       - dev_models:/app/resources/models
       - dev_data:/app/resources/data
+      # Read-only: populated by blockchain-migrate when the blockchain
+      # profile is active. Empty (and harmless) otherwise.
+      - blockchain_build_dev:/app/blockchain_build:ro
     ports:
       - "5000:5000"
     command: python wsgi.py
@@ -51,3 +107,5 @@ volumes:
   dev_models:
   dev_data:
   web_node_modules:
+  blockchain_build_dev:
+  blockchain_node_modules_dev:

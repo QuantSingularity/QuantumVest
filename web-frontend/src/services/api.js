@@ -170,6 +170,20 @@ export const riskAPI = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// Blockchain
+// ─────────────────────────────────────────────────────────────
+export const blockchainAPI = {
+  status: () => api.get("/blockchain/status"),
+  getTrend: (window) =>
+    api.get("/blockchain/trend", { params: window ? { window } : {} }),
+  getMarketData: (ticker) => api.get(`/blockchain/market-data/${ticker}`),
+  recordMarketData: (data) => api.post("/blockchain/market-data", data),
+  getTokenBalance: (address) => api.get(`/blockchain/token/balance/${address}`),
+  getOraclePrice: (assetAddress) =>
+    api.get(`/blockchain/oracle/${assetAddress}`),
+};
+
+// ─────────────────────────────────────────────────────────────
 // System
 // ─────────────────────────────────────────────────────────────
 export const systemAPI = {

@@ -1,0 +1,23 @@
+{
+  "name": "quantumvest-blockchain",
+  "version": "1.0.0",
+  "description": "Smart contract suite for the QuantumVest investment analytics platform",
+  "private": true,
+  "scripts": {
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "migrate:reset": "truffle migrate --reset",
+    "test": "truffle test",
+    "console": "truffle console"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "0.8.0",
+    "@openzeppelin/contracts": "4.9.6"
+  },
+  "devDependencies": {
+    "@truffle/hdwallet-provider": "^2.1.15",
+    "dotenv": "^16.4.5",
+    "solc": "0.8.19",
+    "truffle": "^5.11.5"
+  }
+}
