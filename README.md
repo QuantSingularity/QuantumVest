@@ -1,25 +1,25 @@
 # QuantumVest
 
-![CI/CD Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/QuantumVest/cicd.yml?branch=main&label=CI/CD&logo=github)
-[![Test Coverage](https://img.shields.io/badge/coverage-80%25-yellow)](https://github.com/quantsingularity/QuantumVest/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![CI/CD Status](https://img.shields.io/github/actions/workflow/status/quantsingularity/QuantumVest/cicd.yml?branch=main&label=CI%2FCD&logo=github)
 
-## AI-Powered Predictive Investment Analytics Platform
+## Predictive Investment Analytics Platform
 
-QuantumVest is an advanced predictive investment analytics platform that leverages artificial intelligence, blockchain technology, and quantitative finance models to provide retail investors with actionable insights for smarter investment decisions.
+QuantumVest is an investment analytics platform: a Flask backend for portfolios, watchlists, risk metrics, and on-chain data, paired with a React web dashboard and a React Native (Expo) mobile app. Portfolio optimization and risk calculations (VaR, CVaR, Sharpe, efficient frontier) run in the live API; a separate ensemble of forecasting models (LSTM, XGBoost, LightGBM, CatBoost) exists as a standalone, untied library.
 
 <div align="center">
-  <img src="docs/images/homepage.bmp" alt="QuantumVest HomePage" width="80%">
+  <img src="docs/images/homepage.bmp" alt="QuantumVest HomePage" width="100%">
 </div>
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Project Structure](#project-structure)
-- [Key Features](#key-features)
+- [Feature Status](#feature-status)
 - [Technology Stack](#technology-stack)
 - [Architecture](#architecture)
 - [Installation and Setup](#installation-and-setup)
+- [Running the Stack](#running-the-stack)
+- [API Surface](#api-surface)
 - [Testing](#testing)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Documentation](#documentation)
@@ -28,321 +28,228 @@ QuantumVest is an advanced predictive investment analytics platform that leverag
 
 ## Overview
 
-QuantumVest democratizes access to sophisticated investment analytics by providing retail investors with AI-driven predictions and insights previously available only to institutional investors. By combining machine learning algorithms with blockchain data transparency and quantitative finance models, the platform offers comprehensive market analysis, risk assessment, and investment recommendations across various asset classes.
+QuantumVest demonstrates an investment analytics workflow across a real, runnable codebase. The application tier (backend, smart contracts, and two clients) is wired and covered by tests, with real scipy-based portfolio optimization, VaR/CVaR risk calculations, and a genuine web3.py integration reading Solidity contracts. Two separate, disconnected libraries sit alongside it: `code/ai_models` (an ensemble of forecasting models) and `code/backend/pipeline` (a second, independent prediction pipeline built on yfinance and its own LSTM model), neither of which the live API currently calls.
 
 ## Project Structure
 
-The project is organized into several main components:
-
 ```
 QuantumVest/
-├── code/                   # Core backend logic, services, and shared utilities
-├── docs/                   # Project documentation
-├── infrastructure/         # DevOps, deployment, and infra-related code
-├── mobile-frontend/        # Mobile application
-├── web-frontend/           # Web dashboard
-├── scripts/                # Automation, setup, and utility scripts
-├── LICENSE                 # License information
-└── README.md               # Project overview and instructions
+├── code/
+│   ├── backend/                 # Flask application
+│   │   ├── app/api/v1/          # routes.py: auth, portfolios, watchlists,
+│   │   │                        # assets, risk, blockchain
+│   │   ├── app/services/        # portfolio, quant, risk, financial, blockchain
+│   │   ├── app/core/            # auth, security (JWT, MFA)
+│   │   ├── pipeline/            # Separate, unwired yfinance + LSTM prediction pipeline
+│   │   └── tests/               # Backend test suite (unit and integration)
+│   ├── blockchain/              # Truffle project
+│   │   ├── contracts/           # PortfolioManager, TrendAnalysis (Chainlink feed),
+│   │   │                        # QuantumVestOracle, QuantumVestToken, Governance, Staking
+│   │   └── test/                # Truffle test suite
+│   └── ai_models/               # Standalone forecasting ensemble (LSTM, XGBoost,
+│                                # LightGBM, CatBoost), not imported by the backend
+├── web-frontend/                # React (Vite) dashboard
+├── mobile-frontend/             # React Native + Expo app
+├── infrastructure/              # Docker, Kubernetes, Terraform, Ansible, monitoring
+├── scripts/                     # Setup, run, test, and deploy scripts
+├── docs/                        # Documentation (this directory)
+└── README.md
 ```
 
-## Key Features
+## Feature Status
 
-### AI-Powered Market Predictions
+### Application tier (wired and tested)
 
-- **Trend Forecasting**: Advanced time series models for predicting market movements
-- **Sentiment Analysis**: NLP processing of news and social media for market sentiment
-- **Pattern Recognition**: Identification of chart patterns and trading signals
-- **Anomaly Detection**: Early warning system for unusual market behavior
-- **Correlation Analysis**: Cross-asset correlation insights for diversification
+| Component                  | Details                                                                                                                                                                                                                                                                      |
+| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API**                    | Flask backend exposing `/api/v1` endpoints for auth, portfolios, watchlists, assets, risk, and blockchain, plus `/api/v1/health`.                                                                                                                                            |
+| **Auth**                   | JWT sessions (PyJWT) with bcrypt password hashing, plus an MFA module in `app/core/security.py`. `SECRET_KEY` falls back to a placeholder default with no check that rejects it in production.                                                                               |
+| **Portfolio optimization** | A scipy-based efficient frontier and minimum-variance optimizer, plus Sharpe ratio, max drawdown, and beta calculations.                                                                                                                                                     |
+| **Risk service**           | VaR (historical and parametric), CVaR, stress testing, and concentration-risk calculations, run in-process.                                                                                                                                                                  |
+| **Compliance and alerts**  | Portfolio compliance checks and a user-alerting service, backed by SQLAlchemy models.                                                                                                                                                                                        |
+| **Smart contracts**        | Truffle-managed Solidity contracts: `PortfolioManager`, `TrendAnalysis` (reads a real Chainlink `AggregatorV3Interface` price feed), `QuantumVestOracle`, `QuantumVestToken`, a governance contract, and a staking contract, read and written via a genuine web3.py service. |
+| **Web dashboard**          | React app (plain JavaScript, Vite) with Chart.js, Framer Motion, and React Router, covering Home, Dashboard, Portfolios, Predictions, Blockchain, Settings, and authentication screens.                                                                                      |
+| **Mobile app**             | React Native (Expo) app covering Home, Dashboard, Portfolios, Portfolio Detail, Predictions, Risk Analytics, Blockchain, Watchlist, Settings, and authentication screens, with React Navigation and Detox for end-to-end tests.                                              |
 
-### Blockchain-Enhanced Analytics
+### Research tier (library modules, not wired to a live endpoint)
 
-- **On-Chain Data Analysis**: Insights from blockchain transaction patterns
-- **Whale Movement Tracking**: Monitoring of large holder activities
-- **Smart Money Flow**: Analysis of institutional investor behavior
-- **Network Health Metrics**: Blockchain fundamentals assessment
-- **DeFi Protocol Analytics**: Yield, TVL, and risk metrics for DeFi investments
+| Component                      | Details                                                                                                                                                                           |
+| :----------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Forecasting ensemble**       | An LSTM (TensorFlow/Keras), XGBoost, LightGBM, and CatBoost ensemble in `code/ai_models`, with its own training scripts.                                                          |
+| **Second prediction pipeline** | A separate yfinance-based data pipeline with its own LSTM model and feature engineering, in `code/backend/pipeline`, independent of both `code/ai_models` and the live Flask app. |
 
-### Quantitative Investment Strategies
-
-- **Portfolio Optimization**: Modern Portfolio Theory implementation
-- **Risk-Adjusted Returns**: Sharpe, Sortino, and Calmar ratio calculations
-- **Monte Carlo Simulations**: Probability-based outcome projections
-- **Factor Analysis**: Multi-factor models for investment selection
-- **Algorithmic Strategy Backtesting**: Historical performance validation
-
-### Personalized Investment Experience
-
-- **Risk Profiling**: Customized risk tolerance assessment
-- **Goal-Based Planning**: Investment recommendations aligned with financial goals
-- **Performance Dashboard**: Real-time portfolio tracking and analysis
-- **Scenario Testing**: "What-if" analysis for different market conditions
-- **Automated Alerts**: Notifications for significant market events or opportunities
+Neither library is imported by `code/backend/app`, so predictions from either one aren't currently reachable through the API.
 
 ## Technology Stack
 
-### Frontend
+| Area                       | Technology                                                                                             |
+| :------------------------- | :----------------------------------------------------------------------------------------------------- |
+| Backend API                | Python 3.11+, Flask, Flask-SQLAlchemy, Flask-Migrate, Flask-Caching, Gunicorn                          |
+| Auth                       | PyJWT, bcrypt, an in-house MFA module                                                                  |
+| Data layer                 | SQLAlchemy 2, Alembic, prometheus-client (`/metrics`)                                                  |
+| Quant                      | NumPy, SciPy, statsmodels (portfolio optimization and risk metrics)                                    |
+| ML / Forecasting (library) | TensorFlow/Keras (LSTM), XGBoost, LightGBM, CatBoost, scikit-learn                                     |
+| Market data                | yfinance                                                                                               |
+| Blockchain                 | Solidity, Truffle, web3.py, Chainlink (one price feed, in `TrendAnalysis.sol`)                         |
+| Web frontend               | React 18, JavaScript, Vite, Chart.js, Framer Motion, React Router, axios                               |
+| Mobile frontend            | React Native, Expo, React Navigation, React Native Paper, react-native-chart-kit                       |
+| Infrastructure             | Docker, Docker Compose, Kubernetes, Terraform, Ansible                                                 |
+| Monitoring                 | Prometheus, Grafana                                                                                    |
+| CI/CD                      | GitHub Actions                                                                                         |
+| Testing                    | pytest (backend), Truffle (contracts), Jest (web and mobile), Playwright (web e2e), Detox (mobile e2e) |
 
-- **Framework**: React.js with TypeScript
-- **State Management**: Redux Toolkit
-- **Styling**: Tailwind CSS, Styled Components
-- **Data Visualization**: D3.js, Recharts, TradingView
-- **Web3 Integration**: ethers.js, web3.js
-
-### Backend
-
-- **API Framework**: FastAPI, Flask
-- **Data Processing**: Pandas, NumPy, SciPy
-- **Task Queue**: Celery, Redis
-- **Authentication**: JWT, OAuth2
-- **API Documentation**: Swagger, ReDoc
-
-### AI/ML
-
-- **Frameworks**: TensorFlow, PyTorch, scikit-learn
-- **Time Series Models**: ARIMA, LSTM, Prophet
-- **NLP**: BERT, Transformers, spaCy
-- **Feature Engineering**: Feature-tools, tsfresh
-- **Model Serving**: MLflow, TensorFlow Serving
-
-### Blockchain
-
-- **Networks**: Ethereum, Binance Smart Chain
-- **Data Indexing**: The Graph, Dune Analytics
-- **Smart Contracts**: Solidity (for data collection)
-- **Web3 Libraries**: web3.py, ethers.js
-- **Oracles**: Chainlink (for market data)
-
-### Data Storage
-
-- **Relational DB**: PostgreSQL
-- **Time Series DB**: InfluxDB, TimescaleDB
-- **Caching**: Redis
-- **Object Storage**: AWS S3, MinIO
-- **Data Warehouse**: Snowflake, BigQuery
-
-### DevOps
-
-- **Containerization**: Docker
-- **Orchestration**: Kubernetes
-- **CI/CD**: GitHub Actions
-- **Monitoring**: Prometheus, Grafana
-- **Infrastructure as Code**: Terraform
+The app-level `code/docker-compose.yml` provisions PostgreSQL, but `code/backend/requirements.txt` only includes a MySQL driver (PyMySQL); the infrastructure-level `infrastructure/docker-compose.yml` and Kubernetes manifests provision MySQL instead. If you're running the app-level compose file, you'll need to add a PostgreSQL driver yourself, or point `DATABASE_URL` at a MySQL instance to match what's actually installed.
 
 ## Architecture
 
-QuantumVest follows a modular microservices architecture with the following components:
+```
+Clients
+  ├── web-frontend (React)               ── HTTP/JSON ──┐
+  └── mobile-frontend (React Native)     ── HTTP/JSON ──┤
+                                                        ▼
+Backend (Flask, /api/v1)
+  ├── Routes    auth, portfolios, watchlists, assets, risk, blockchain
+  ├── Core       JWT auth, MFA
+  ├── Services    portfolio, quant (efficient frontier), risk (VaR/CVaR),
+  │              financial (compliance, alerts), blockchain (web3.py)
+  └── Data layer   SQLAlchemy + Alembic
 
+Blockchain (Truffle / Solidity)
+  PortfolioManager · TrendAnalysis (Chainlink feed) · QuantumVestOracle
+  QuantumVestToken · QuantumVestGovernance · QuantumVestStaking
+
+Standalone libraries (not called by the backend)
+  code/ai_models        LSTM, XGBoost, LightGBM, CatBoost ensemble
+  code/backend/pipeline  yfinance + a second, independent LSTM pipeline
 ```
-QuantumVest/
-├── Frontend Layer
-│   ├── User Interface
-│   ├── Data Visualization
-│   ├── Authentication
-│   └── Web3 Integration
-├── Backend Services
-│   ├── API Gateway
-│   ├── User Service
-│   ├── Analytics Service
-│   ├── Notification Service
-│   └── Authentication Service
-├── AI Engine
-│   ├── Prediction Models
-│   ├── Sentiment Analysis
-│   ├── Pattern Recognition
-│   └── Risk Assessment
-├── Blockchain Layer
-│   ├── On-Chain Data Collector
-│   ├── Whale Tracker
-│   ├── Smart Money Analyzer
-│   └── Network Health Monitor
-├── Quantitative Engine
-│   ├── Portfolio Optimizer
-│   ├── Risk Calculator
-│   ├── Strategy Backtester
-│   └── Monte Carlo Simulator
-└── Data Layer
-    ├── Market Data
-    ├── User Data
-    ├── Model Training Data
-    └── Blockchain Data
-```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detail.
 
 ## Installation and Setup
 
-### Prerequisites
-
-- Node.js (v14+)
-- Python (v3.8+)
-- Docker and Docker Compose
-- PostgreSQL
-- Redis
-
-### Quick Start with Setup Script
-
-```bash
-# Clone the repository
-git clone https://github.com/quantsingularity/QuantumVest.git
-cd QuantumVest
-
-# Run the setup script
-./setup_quantumvest_env.sh
-
-# Start the application
-./run_quantumvest.sh
-```
-
-### Manual Setup
-
-1. Clone the repository:
+Prerequisites: Python 3.11+ and Node.js 18+.
 
 ```bash
 git clone https://github.com/quantsingularity/QuantumVest.git
 cd QuantumVest
-```
 
-2. Install frontend dependencies:
-
-```bash
-cd code/frontend
+# Blockchain
+cd code/blockchain
 npm install
-```
 
-3. Install backend dependencies:
-
-```bash
+# Backend
 cd ../backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-4. Install blockchain dependencies:
+# Web frontend
+cd ../../web-frontend
+npm install
 
-```bash
-cd ../blockchain
+# Mobile frontend
+cd ../mobile-frontend
 npm install
 ```
 
-5. Set up environment variables:
-   - Create `.env` files in both frontend and backend directories based on the provided `.env.example` files
-
-6. Start the services:
+For an automated setup:
 
 ```bash
-# Start database and Redis
-docker-compose up -d
-
-# Start backend
-cd ../backend
-uvicorn main:app --reload
-
-# Start frontend
-cd ../frontend
-npm start
+git clone https://github.com/quantsingularity/QuantumVest.git
+cd QuantumVest
+./scripts/setup_quantumvest_env.sh
+./scripts/run_quantumvest.sh
 ```
+
+Full, environment-specific instructions are in [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
+## Running the Stack
+
+```bash
+# 1) Supporting services (from code/, Docker required)
+docker compose up -d db
+
+# 2) Local chain (from code/blockchain)
+npx truffle develop
+
+# 3) Backend (from code/backend, venv active)
+python -c "from app import create_app; create_app('development').run(host='0.0.0.0', port=5000)"
+# or, for a production-style run:
+gunicorn wsgi:app --bind 0.0.0.0:5000
+
+# 4) Web dashboard (from web-frontend)
+npm run dev
+
+# 5) Mobile app (from mobile-frontend)
+npm start                          # press w for web, a for Android, i for iOS
+```
+
+See [docs/USAGE.md](docs/USAGE.md) and [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+
+## API Surface
+
+Base URL `http://localhost:5000/api/v1`.
+
+| Group      | Highlights                                                                                                    |
+| :--------- | :------------------------------------------------------------------------------------------------------------ |
+| Auth       | `register`, `login`, `logout`, `refresh`, `forgot-password`, `reset-password`, `profile`, `change-password`   |
+| Portfolios | list/create, `{id}`, `{id}/transactions`, `{id}/performance`, `{id}/optimize`                                 |
+| Assets     | list, `search`                                                                                                |
+| Watchlists | list/create, `{id}`, `{id}/items`                                                                             |
+| Risk       | `var`, `metrics`                                                                                              |
+| Blockchain | `status`, `trend`, `market-data`, `market-data/{ticker}`, `token/balance/{address}`, `oracle/{asset_address}` |
+
+Full request and response shapes are in [docs/API.md](docs/API.md).
 
 ## Testing
 
-The project maintains comprehensive test coverage across all components to ensure reliability and accuracy.
-
-### Test Coverage
-
-| Component              | Coverage | Status |
-| ---------------------- | -------- | ------ |
-| Frontend Components    | 78%      | ✅     |
-| Backend Services       | 85%      | ✅     |
-| AI Models              | 82%      | ✅     |
-| Blockchain Integration | 75%      | ✅     |
-| Quantitative Engine    | 83%      | ✅     |
-| Data Processing        | 79%      | ✅     |
-| Overall                | 80%      | ✅     |
-
-### Unit Tests
-
-- Frontend component tests with Jest and React Testing Library
-- Backend API and service tests with pytest
-- AI model validation tests
-- Blockchain integration tests
-
-### Integration Tests
-
-- End-to-end API tests
-- Data pipeline tests
-- Cross-service workflow tests
-- User journey tests
-
-### Performance Tests
-
-- Load testing for API endpoints
-- Model inference performance tests
-- Database query optimization tests
-- Real-time data processing tests
-
-### Running Tests
-
 ```bash
-# Run frontend tests
-cd code/frontend
-npm test
-
-# Run backend tests
-cd ../backend
+# Backend (from code/backend)
 pytest
 
-# Run AI model tests
-cd ../ai_models
-python -m unittest discover
+# Smart contracts (from code/blockchain)
+npx truffle test
 
-# Run all tests
-./run_all_tests.sh
+# Web (from web-frontend)
+npm test
+
+# Mobile (from mobile-frontend)
+npm test
 ```
+
+The backend suite has 8 unit test files and 4 integration test files. The Truffle suite has 7 files covering the contracts. The web dashboard has 7 test files (Jest, plus Playwright for end-to-end); the mobile app has 4 (Jest, plus Detox configured for end-to-end).
 
 ## CI/CD Pipeline
 
-QuantumVest uses GitHub Actions for continuous integration and deployment:
+GitHub Actions (`.github/workflows/cicd.yml`) runs four jobs on push, pull request, and manual dispatch:
 
-| Stage                | Control Area                    | Institutional-Grade Detail                                                              |
-| :------------------- | :------------------------------ | :-------------------------------------------------------------------------------------- |
-| **Formatting Check** | Change Triggers                 | Enforced on all `push` and `pull_request` events to `main` and `develop`                |
-|                      | Manual Oversight                | On-demand execution via controlled `workflow_dispatch`                                  |
-|                      | Source Integrity                | Full repository checkout with complete Git history for auditability                     |
-|                      | Python Runtime Standardization  | Python 3.10 with deterministic dependency caching                                       |
-|                      | Backend Code Hygiene            | `autoflake` to detect unused imports/variables using non-mutating diff-based validation |
-|                      | Backend Style Compliance        | `black --check` to enforce institutional formatting standards                           |
-|                      | Non-Intrusive Validation        | Temporary workspace comparison to prevent unauthorized source modification              |
-|                      | Node.js Runtime Control         | Node.js 18 with locked dependency installation via `npm ci`                             |
-|                      | Web Frontend Formatting Control | Prettier checks for web-facing assets                                                   |
-|                      | Mobile Frontend Formatting      | Prettier enforcement for mobile application codebases                                   |
-|                      | Documentation Governance        | Repository-wide Markdown formatting enforcement                                         |
-|                      | Infrastructure Configuration    | Prettier validation for YAML/YML infrastructure definitions                             |
-|                      | Compliance Gate                 | Any formatting deviation fails the pipeline and blocks merge                            |
+| Job                  | Depends on          | What it does                                                                       |
+| :------------------- | :------------------ | :--------------------------------------------------------------------------------- |
+| Code Quality Checks  | -                   | Python formatter checks (autoflake, black) and a repository-wide Prettier check    |
+| Backend Tests        | Code Quality Checks | Runs the pytest suite with coverage and uploads the coverage report as an artifact |
+| Frontend Build       | Code Quality Checks | Installs dependencies and produces the production web build (no test step)         |
+| Blockchain Contracts | Code Quality Checks | Compiles the contracts with Truffle and runs the contract test suite               |
+
+There is currently no CI job for the mobile app.
 
 ## Documentation
 
-| Document                    | Path                 | Description                                                    |
-| :-------------------------- | :------------------- | :------------------------------------------------------------- |
-| **README**                  | `README.md`          | High-level overview, project scope, and repository entry point |
-| **Installation Guide**      | `INSTALLATION.md`    | Step-by-step installation and environment setup                |
-| **API Reference**           | `API.md`             | Detailed documentation for all API endpoints                   |
-| **CLI Reference**           | `CLI.md`             | Command-line interface usage, commands, and examples           |
-| **User Guide**              | `USAGE.md`           | Comprehensive end-user guide, workflows, and examples          |
-| **Architecture Overview**   | `ARCHITECTURE.md`    | System architecture, components, and design rationale          |
-| **Configuration Guide**     | `CONFIGURATION.md`   | Configuration options, environment variables, and tuning       |
-| **Feature Matrix**          | `FEATURE_MATRIX.md`  | Feature coverage, capabilities, and roadmap alignment          |
-| **Contributing Guidelines** | `CONTRIBUTING.md`    | Contribution workflow, coding standards, and PR requirements   |
-| **Troubleshooting**         | `TROUBLESHOOTING.md` | Common issues, diagnostics, and remediation steps              |
+| Document                                           | Contents                               |
+| :------------------------------------------------- | :------------------------------------- |
+| [docs/README.md](docs/README.md)                   | Documentation index                    |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)       | System architecture                    |
+| [docs/API.md](docs/API.md)                         | REST API reference                     |
+| [docs/INSTALLATION.md](docs/INSTALLATION.md)       | Setup for all components               |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md)     | Environment variables and config       |
+| [docs/USAGE.md](docs/USAGE.md)                     | Running and using the platform         |
+| [docs/CLI.md](docs/CLI.md)                         | Helper scripts reference               |
+| [docs/FEATURE_MATRIX.md](docs/FEATURE_MATRIX.md)   | Feature status, implemented vs planned |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes                |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)       | Contribution guide                     |
+| [docs/examples/](docs/examples/)                   | Worked examples                        |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## License
 
