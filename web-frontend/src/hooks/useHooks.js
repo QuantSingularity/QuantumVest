@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// BUG FIX: execute was not memoized, causing it to be recreated on every render.
-// With immediate=true this triggered an infinite loop: render → new execute →
-// useEffect fires → setState → render → repeat.
-// Now execute is stable via useCallback with only apiFunction in deps.
 export const useApi = (
   apiFunction,
   initialData = null,
