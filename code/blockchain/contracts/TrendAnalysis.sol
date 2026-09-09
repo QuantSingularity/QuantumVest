@@ -23,15 +23,6 @@ contract TrendAnalysis {
 
     /**
      * @dev Computes a simple moving average over the last `window` rounds.
-     *
-     * BUGFIX: this previously called `priceFeed.latestRound()`, which does
-     * not exist on AggregatorV3Interface (it only exists on the older,
-     * deprecated AggregatorInterface) — the contract could not compile.
-     * The round id is now sourced from `latestRoundData()` instead, and is
-     * correctly typed as `uint80` per the interface. A `window == 0` guard
-     * and an underflow guard on `roundId - i` were also added, since the
-     * original would divide by zero or revert with an unclear arithmetic
-     * error when walking past round 0.
      */
     function calculateMA(uint256 window) public view returns (int256) {
         require(window > 0, "Window must be greater than 0");

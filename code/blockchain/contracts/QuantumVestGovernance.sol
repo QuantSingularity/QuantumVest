@@ -112,9 +112,6 @@ contract QuantumVestGovernance is AccessControl {
         uint256 proposalId,
         uint8 support
     ) external onlyTokenHolder {
-        // BUGFIX: support was never validated. Any value outside {0,1,2}
-        // silently fell through the if/else chain below, marking the
-        // account as having voted while the vote counted toward nothing.
         require(support <= 2, "Invalid vote type");
 
         Proposal storage proposal = proposals[proposalId];

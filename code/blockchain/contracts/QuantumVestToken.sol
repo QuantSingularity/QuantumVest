@@ -104,11 +104,6 @@ contract QuantumVestToken is ERC20, ERC20Burnable, Pausable, AccessControl {
     ) internal override whenNotPaused complianceCheck(from, to) {
         super._beforeTokenTransfer(from, to, amount);
 
-        // BUGFIX: vestingSchedule was recorded (setVestingSchedule/VestingScheduleSet)
-        // but never actually enforced anywhere, so it had no effect on transfers.
-        // Block outgoing transfers from an account still inside its vesting period.
-        // Minting (from == address(0)) is intentionally exempt so vested tokens can
-        // still be issued to the beneficiary.
         if (from != address(0)) {
             require(
                 block.timestamp >= vestingSchedule[from],

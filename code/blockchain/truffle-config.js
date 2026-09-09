@@ -1,7 +1,3 @@
-// BUGFIX: this file referenced `HDWalletProvider` and `mnemonic` without ever
-// requiring/defining either, so any attempt to deploy to bsc_testnet threw a
-// ReferenceError. It now loads the mnemonic from a `.env` file (see
-// `.env.example`) and only builds the provider on demand.
 require("dotenv").config();
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
@@ -52,14 +48,6 @@ module.exports = {
 
   compilers: {
     solc: {
-      // BUGFIX: pragmas across the project range from ^0.8.0 to ^0.8.19; the
-      // original config pinned 0.8.0, which is too low to compile files
-      // declaring ^0.8.19. Bumped to 0.8.19, the highest pragma in use.
-      //
-      // Resolved from the locally installed `solc` npm package (see
-      // package.json) rather than fetched from solc-bin at compile time, so
-      // `truffle compile`/`truffle test` work in offline or network-restricted
-      // environments (CI runners, sandboxes, corporate proxies, etc.).
       version: require.resolve("solc"),
       settings: {
         optimizer: { enabled: true, runs: 200 },

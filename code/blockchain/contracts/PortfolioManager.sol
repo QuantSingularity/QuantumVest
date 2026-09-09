@@ -14,9 +14,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  */
 contract PortfolioManager is ReentrancyGuard, AccessControl {
     using SafeMath for uint256;
-    // BUGFIX: token transfer return values were never checked, so a
-    // non-reverting ERC20 that returns `false` on failure would silently
-    // "succeed" while moving no tokens. SafeERC20 reverts on failure.
     using SafeERC20 for IERC20;
 
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");

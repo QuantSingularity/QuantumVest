@@ -4,11 +4,6 @@ const PortfolioManager = artifacts.require("PortfolioManager");
 const QuantumVestStaking = artifacts.require("QuantumVestStaking");
 const QuantumVestGovernance = artifacts.require("QuantumVestGovernance");
 
-// BUGFIX: these contracts previously lived in a single smart_contracts.sol
-// file at the blockchain project root, outside contracts/ (Truffle's
-// default contracts_directory), so `truffle compile`/`migrate` never even
-// saw them. They're now split into contracts/*.sol (one contract per file)
-// and deployed here.
 module.exports = async function (deployer, network, accounts) {
   await deployer.deploy(QuantumVestToken);
   const token = await QuantumVestToken.deployed();

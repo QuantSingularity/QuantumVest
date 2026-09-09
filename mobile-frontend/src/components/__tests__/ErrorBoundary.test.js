@@ -69,21 +69,6 @@ describe("ErrorBoundary", () => {
     expect(getByText("Oops! Something went wrong")).toBeTruthy();
     expect(boundaryRef.state.hasError).toBe(true);
 
-    // BUGFIX: this test previously called `boundaryRef.handleReset()`
-    // directly while the child was still configured to throw
-    // (`shouldThrow={true}`). Clearing `hasError` makes the boundary
-    // render `this.props.children` again, so the still-throwing child
-    // throws immediately, and getDerivedStateFromError re-catches it
-    // within the same act() call - hasError snaps straight back to
-    // `true` before the assertion ever sees it false. That's correct,
-    // expected error-boundary behavior, not a bug: resetting only makes
-    // sense once whatever caused the error has actually been fixed.
-    //
-    // Mirror that here by updating the child to stop throwing first (the
-    // fallback UI still renders at this point, since state.hasError is
-    // still true - only the props/children changed), then actually
-    // press the "Try Again" button, matching what this test claims to
-    // verify.
     rerender(
       <ErrorBoundary
         ref={(r) => {
