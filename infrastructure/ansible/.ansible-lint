@@ -2,7 +2,7 @@
 # Rewritten for schema compatibility with current ansible-lint (26.x). The
 # previous version used "parseable" and "warnings_as_errors" top-level keys
 # and a custom "rules:" severity-override block, none of which are valid in
-# this schema — ansible-lint refused to even start ("Invalid configuration
+# this schema - ansible-lint refused to even start ("Invalid configuration
 # file ... Additional properties are not allowed").
 exclude_paths:
   - .cache/

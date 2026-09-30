@@ -223,7 +223,7 @@ const Blockchain = () => {
             title="No blockchain connection"
             description={
               statusError ||
-              "The backend isn't connected to a Web3 provider right now. This is an optional feature — start it locally with `docker compose --profile blockchain up`, or set WEB3_PROVIDER_URI to point at a running chain."
+              "The backend isn't connected to a Web3 provider right now. This is an optional feature - start it locally with `docker compose --profile blockchain up`, or set WEB3_PROVIDER_URI to point at a running chain."
             }
           />
         </div>
@@ -404,7 +404,7 @@ const Blockchain = () => {
                     <div className="section-title">
                       <h4>Record a data point</h4>
                       <span className="badge badge-info">
-                        Admin — sends an on-chain transaction
+                        Admin - sends an on-chain transaction
                       </span>
                     </div>
                     <form onSubmit={submitRecord}>

@@ -65,7 +65,7 @@ kubernetes/
 
 ### 1. Prepare Secrets
 
-`templates/app-secrets.yaml` is a Helm template — it reads plaintext values
+`templates/app-secrets.yaml` is a Helm template - it reads plaintext values
 like `.Values.database.rootPassword` and base64-encodes them itself via the
 `b64enc` function. You never hand-encode or edit `app-secrets.yaml` directly;
 instead supply the plaintext secrets Helm should inject, either with `--set`
@@ -96,7 +96,7 @@ EOF
 
 kubectl and kubeval can't parse the raw templates directly (they contain
 literal `{{ .Values.x }}` syntax, which isn't valid YAML/Kubernetes on its
-own) — render them with `helm template` first, then validate the output:
+own) - render them with `helm template` first, then validate the output:
 
 ```bash
 # Lint the chart itself (catches template/values errors)
@@ -143,7 +143,7 @@ kubectl describe pod <pod-name> -n quantumvest-dev
 ## Deployment Methods
 
 This chart is Helm-templated (`{{ .Values.x }}` throughout `templates/`), so
-Helm is the only way to render or deploy it — `kubectl apply -f templates/`
+Helm is the only way to render or deploy it - `kubectl apply -f templates/`
 won't work (kubectl has no concept of Helm templating), and neither does
 Kustomize (it doesn't process Helm syntax either).
 

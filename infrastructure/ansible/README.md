@@ -53,7 +53,7 @@ ansible all -m ping -i inventory/hosts.yml
 ### 2. Install Ansible Collections
 
 ```bash
-# Installs community.general, community.mysql, and ansible.posix —
+# Installs community.general, community.mysql, and ansible.posix -
 # see requirements.yml for exact version constraints.
 ansible-galaxy collection install -r requirements.yml
 ```
@@ -203,7 +203,7 @@ ansible-playbook playbooks/main.yml --limit databases --tags database
 
 ### Group Variables
 
-`group_vars/all/vars.yml` (already created — applies to all hosts; this is
+`group_vars/all/vars.yml` (already created - applies to all hosts; this is
 where `app_name`, `server_name`, `db_name`, and `db_user` are defined, since
 `webserver` and `database` role tasks/templates reference them directly):
 
@@ -235,7 +235,7 @@ nginx_worker_processes: 4
 
 `group_vars/all/vars.yml` references `vault_mysql_root_password` and
 `vault_db_password`, which come from an ansible-vault-encrypted file in the
-same directory — copy the example and encrypt it:
+same directory - copy the example and encrypt it:
 
 ```bash
 cp group_vars/all/vault.yml.example group_vars/all/vault.yml

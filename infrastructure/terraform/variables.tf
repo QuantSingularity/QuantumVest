@@ -107,7 +107,7 @@ variable "certificate_arn" {
   description = <<-EOT
     ACM certificate ARN for the ALB's HTTPS listener (e.g.
     arn:aws:acm:us-east-1:123456789012:certificate/xxxx). Leave empty to
-    deploy HTTP-only (e.g. before a certificate has been issued/validated) —
+    deploy HTTP-only (e.g. before a certificate has been issued/validated) -
     the compute module only creates the HTTPS listener and the HTTP->HTTPS
     redirect when this is set.
   EOT

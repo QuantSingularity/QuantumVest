@@ -71,13 +71,13 @@ echo "Installing/Updating Python linting tools..."
 pip3 install --upgrade black isort flake8 pylint
 
 # Install global npm packages for JavaScript/TypeScript linting. These are a
-# fallback only — each frontend's own local eslint/plugins (installed via
+# fallback only - each frontend's own local eslint/plugins (installed via
 # its package.json) are preferred when we cd into that project below.
 echo "----------------------------------------"
 echo "Installing/Updating JavaScript linting tools..."
 npm install -g eslint prettier eslint-plugin-react eslint-plugin-react-hooks
 
-# Define directories to process. These are real top-level directories —
+# Define directories to process. These are real top-level directories -
 # black/isort/flake8/pylint/eslint/prettier all recurse into subdirectories
 # on their own, so there's no need (and no accuracy benefit) to enumerate
 # every subdirectory by hand.
@@ -99,7 +99,7 @@ YAML_DIRECTORIES=(
 )
 
 # terraform fmt/validate are recursive, so only the top-level directory is
-# needed — infrastructure/terraform/{modules,environments} are covered
+# needed - infrastructure/terraform/{modules,environments} are covered
 # automatically.
 TERRAFORM_DIRECTORIES=(
   "infrastructure/terraform"
@@ -223,7 +223,7 @@ fi
 
 # 2.3 Run ESLint. Each JS_DIRECTORIES entry is inside a project
 # (web-frontend, mobile-frontend, code/blockchain) that may have its own
-# local eslint + plugins installed via package.json — cd into that project
+# local eslint + plugins installed via package.json - cd into that project
 # root first so npx resolves those local versions instead of silently
 # falling back to whatever's installed globally.
 echo "Running ESLint for JavaScript/TypeScript files..."

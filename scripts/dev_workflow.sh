@@ -4,7 +4,7 @@
 
 # Exit immediately if a command exits with a non-zero status (individual
 # check functions below trap their own failures so one failing tool doesn't
-# prevent the rest of the workflow from running — see run_* functions).
+# prevent the rest of the workflow from running - see run_* functions).
 set -e
 
 # Colors for terminal output
@@ -113,7 +113,7 @@ run_linting() {
       echo -e "${YELLOW}Please install tflint for Terraform linting.${NC}"
     else
       # .tf files live under infrastructure/terraform/{modules,environments},
-      # not directly in infrastructure/ — tflint needs --recursive (or to be
+      # not directly in infrastructure/ - tflint needs --recursive (or to be
       # run from that directory) to find them at all.
       (cd infrastructure/terraform && tflint --recursive) || status=1
     fi
@@ -122,7 +122,7 @@ run_linting() {
   if [ "$status" -eq 0 ]; then
     echo -e "\n${GREEN}Linting completed with no errors.${NC}"
   else
-    echo -e "\n${RED}Linting completed with errors — see above.${NC}"
+    echo -e "\n${RED}Linting completed with errors - see above.${NC}"
   fi
   return $status
 }
@@ -202,7 +202,7 @@ run_tests() {
   if [ "$status" -eq 0 ]; then
     echo -e "\n${GREEN}Tests completed successfully.${NC}"
   else
-    echo -e "\n${RED}One or more test suites failed — see above.${NC}"
+    echo -e "\n${RED}One or more test suites failed - see above.${NC}"
   fi
   return $status
 }

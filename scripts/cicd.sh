@@ -475,7 +475,7 @@ setup_version_control_hooks() {
   echo -e "\n${BLUE}Setting up version control hooks...${NC}"
 
   if [ ! -d ".git" ]; then
-    echo -e "${YELLOW}No .git directory found — this doesn't look like a git repository yet.${NC}"
+    echo -e "${YELLOW}No .git directory found - this doesn't look like a git repository yet.${NC}"
     echo -e "${YELLOW}Run 'git init' first, then re-run this script to install hooks.${NC}"
     return
   fi

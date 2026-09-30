@@ -222,7 +222,7 @@ service_level_objectives:
     error_budget_window: "7d"
 
   database_availability:
-    sli: "up{job='mysqld-exporter'}" # deployed DB is MySQL, not Postgres — see docker-compose.yml/kubernetes/terraform
+    sli: "up{job='mysqld-exporter'}" # deployed DB is MySQL, not Postgres - see docker-compose.yml/kubernetes/terraform
     slo: 0.9999 # 99.99% availability
     error_budget_window: "30d"
 
@@ -234,7 +234,7 @@ error_tracking:
     release: "${APP_VERSION}"
 
     integrations:
-      # The backend is Python/Flask (see code/backend), not Node/Express —
+      # The backend is Python/Flask (see code/backend), not Node/Express -
       # Sentry's Python SDK integration names are used here instead.
       - name: "flask"
         enabled: true

@@ -2,8 +2,8 @@
 #
 # NOTE: this file's tuning parameters (shared_buffers, wal_level, etc.) are
 # PostgreSQL-specific, but the database actually deployed everywhere else in
-# this infrastructure — docker-compose.yml, kubernetes/, and
-# terraform/modules/database — is MySQL 8.0. This appears to predate that
+# this infrastructure - docker-compose.yml, kubernetes/, and
+# terraform/modules/database - is MySQL 8.0. This appears to predate that
 # choice, or to have been drafted from a generic template. Treat the
 # specific settings below as illustrative rather than deploy-ready; the
 # MySQL-equivalent concepts are: shared_buffers -> innodb_buffer_pool_size,

@@ -208,7 +208,7 @@ resource "aws_lb_listener" "http_redirect" {
 }
 
 # AWS rejects an HTTPS listener created with an empty certificate_arn, and
-# nothing upstream of this module supplies a real one by default — only
+# nothing upstream of this module supplies a real one by default - only
 # create this listener once var.certificate_arn is actually set.
 resource "aws_lb_listener" "https" {
   count = var.certificate_arn != "" ? 1 : 0

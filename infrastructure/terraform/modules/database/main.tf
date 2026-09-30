@@ -9,7 +9,7 @@ resource "aws_db_subnet_group" "main" {
 }
 
 # RDS Enhanced Monitoring (monitoring_interval > 0, enabled below for prod)
-# requires an IAM role RDS can assume to publish metrics to CloudWatch —
+# requires an IAM role RDS can assume to publish metrics to CloudWatch -
 # without it, `terraform apply` fails with "Monitoring Role ARN must be set
 # when Monitoring Interval is set to a value other than 0".
 resource "aws_iam_role" "rds_enhanced_monitoring" {

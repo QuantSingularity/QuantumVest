@@ -96,7 +96,7 @@ if [ ! -f "${BACKEND_DIR}/.env" ]; then
     cp "${BACKEND_DIR}/.env.example" "${BACKEND_DIR}/.env"
     echo -e "${GREEN}Created code/backend/.env from .env.example. Review it before running in production.${NC}"
   else
-    echo -e "${YELLOW}No .env.example found either — you'll need to create code/backend/.env manually${NC}"
+    echo -e "${YELLOW}No .env.example found either - you'll need to create code/backend/.env manually${NC}"
     echo -e "${YELLOW}(see config.py for the variables it reads: SECRET_KEY, JWT_SECRET_KEY, DATABASE_URL, etc).${NC}"
   fi
 fi

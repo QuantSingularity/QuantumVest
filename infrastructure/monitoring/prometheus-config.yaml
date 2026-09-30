@@ -1,7 +1,7 @@
 # Monitoring Infrastructure Configuration
 #
 # NOTE: this is a single reference document covering Prometheus, Grafana,
-# and Alertmanager configuration together for readability — none of these
+# and Alertmanager configuration together for readability - none of these
 # tools can load this file directly (each expects its own separate file at
 # its own top level: prometheus.yml, alertmanager.yml, grafana.ini/
 # provisioning YAML, and rule files under rule_files). Split the relevant
@@ -40,7 +40,7 @@ prometheus:
       scrape_interval: 15s
 
     # The deployed database is MySQL (see docker-compose.yml, the
-    # Kubernetes StatefulSet, and terraform/modules/database) — use
+    # Kubernetes StatefulSet, and terraform/modules/database) - use
     # mysqld_exporter, not postgres_exporter.
     - job_name: "mysqld-exporter"
       static_configs:

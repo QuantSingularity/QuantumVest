@@ -177,7 +177,7 @@ setup_env_variables() {
         # Postgres instance this script provisions in setup_database().
         {
           echo ""
-          echo "# Added by env_setup.sh — local Postgres instance"
+          echo "# Added by env_setup.sh - local Postgres instance"
           echo "DEV_DATABASE_URL=postgresql://quantumvest:quantumvest@localhost:5432/quantumvest_dev"
         } >> code/backend/.env
       else
@@ -245,7 +245,7 @@ setup_database() {
   fi
 
   # Create database and user if they don't exist. The source of truth for
-  # the connection string is code/backend/.env's DATABASE_URL — NOT a
+  # the connection string is code/backend/.env's DATABASE_URL - NOT a
   # top-level .env, which nothing in the application actually reads.
   echo -e "${BLUE}Creating database and user if they don't exist...${NC}"
 
@@ -299,7 +299,7 @@ setup_docker() {
       if command_exists openssl; then
         for var in DB_PASSWORD MYSQL_ROOT_PASSWORD JWT_SECRET ENCRYPTION_KEY REDIS_PASSWORD GRAFANA_PASSWORD; do
           secret=$(openssl rand -hex 24)
-          # macOS/BSD sed needs -i '', GNU sed needs -i — this project targets Linux, so plain -i is used.
+          # macOS/BSD sed needs -i '', GNU sed needs -i - this project targets Linux, so plain -i is used.
           sed -i "s#^${var}=.*#${var}=${secret}#" infrastructure/.env
         done
         echo -e "${GREEN}infrastructure/.env generated with random secrets.${NC}"

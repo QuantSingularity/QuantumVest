@@ -10,7 +10,7 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
 
 ### 1. `env_setup.sh`
 
-- **Purpose:** Automates the environment setup process for QuantumVest — system packages, Python virtualenv, Node dependencies (web-frontend, mobile-frontend, blockchain), `.env` files, local PostgreSQL database, and Docker.
+- **Purpose:** Automates the environment setup process for QuantumVest - system packages, Python virtualenv, Node dependencies (web-frontend, mobile-frontend, blockchain), `.env` files, local PostgreSQL database, and Docker.
 - **Usage:**
 
   ```bash
@@ -28,7 +28,7 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
 
 ### 2. `setup_quantumvest_env.sh`
 
-- **Purpose:** A more focused alternative to `env_setup.sh` — sets up the Python virtualenv + backend dependencies, and installs dependencies for web-frontend, mobile-frontend, and the blockchain project. Prints exact commands to start each service afterward.
+- **Purpose:** A more focused alternative to `env_setup.sh` - sets up the Python virtualenv + backend dependencies, and installs dependencies for web-frontend, mobile-frontend, and the blockchain project. Prints exact commands to start each service afterward.
 - **Usage:**
 
   ```bash
@@ -39,7 +39,7 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
 
 ### 3. `dev_workflow.sh`
 
-- **Purpose:** Automates development workflow tasks — linting, testing, code quality checks, and documentation generation across the backend, AI models, web-frontend, mobile-frontend, and blockchain code.
+- **Purpose:** Automates development workflow tasks - linting, testing, code quality checks, and documentation generation across the backend, AI models, web-frontend, mobile-frontend, and blockchain code.
 - **Usage:**
 
   ```bash
@@ -54,13 +54,13 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
   - `-d, --docs` Generate documentation only
   - `-a, --all` Run all checks (default)
 
-  Running with no options (or `--all`) runs every check even if an earlier one fails, then exits non-zero at the end if anything failed — so one failing lint rule won't prevent your tests from running.
+  Running with no options (or `--all`) runs every check even if an earlier one fails, then exits non-zero at the end if anything failed - so one failing lint rule won't prevent your tests from running.
 
 ---
 
 ### 4. `lint-all.sh`
 
-- **Purpose:** A standalone, more thorough linter/formatter pass — Black, isort, flake8, and pylint for Python; ESLint and Prettier for JavaScript/TypeScript; yamllint for YAML; `terraform fmt`/`validate` for Terraform. Also fixes trailing whitespace and missing trailing newlines repo-wide.
+- **Purpose:** A standalone, more thorough linter/formatter pass - Black, isort, flake8, and pylint for Python; ESLint and Prettier for JavaScript/TypeScript; yamllint for YAML; `terraform fmt`/`validate` for Terraform. Also fixes trailing whitespace and missing trailing newlines repo-wide.
 - **Usage:**
 
   ```bash
@@ -73,7 +73,7 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
 
 ### 5. `deploy.sh`
 
-- **Purpose:** Automates deployment — Docker Compose (default) or a direct deploy (Gunicorn + Nginx for the backend/web-frontend, EAS/Gradle for the mobile app).
+- **Purpose:** Automates deployment - Docker Compose (default) or a direct deploy (Gunicorn + Nginx for the backend/web-frontend, EAS/Gradle for the mobile app).
 - **Usage:**
 
   ```bash
@@ -142,7 +142,7 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
 
 ### 10. `maintenance.sh`
 
-- **Purpose:** Automates maintenance tasks — log rotation/archival, backups (database dump + a tarball of code/config), and a system health check (disk/memory/CPU, running processes, Docker containers, database connectivity, and the backend/frontend HTTP endpoints).
+- **Purpose:** Automates maintenance tasks - log rotation/archival, backups (database dump + a tarball of code/config), and a system health check (disk/memory/CPU, running processes, Docker containers, database connectivity, and the backend/frontend HTTP endpoints).
 - **Usage:**
 
   ```bash
@@ -160,7 +160,7 @@ All scripts assume they're run from the root of the QuantumVest project (e.g. `.
 
 ### 11. `cicd.sh`
 
-- **Purpose:** Automates CI/CD scaffolding — GitHub Actions workflows, a `release.sh` version-bump/changelog/tag script, and git pre-commit/pre-push hooks.
+- **Purpose:** Automates CI/CD scaffolding - GitHub Actions workflows, a `release.sh` version-bump/changelog/tag script, and git pre-commit/pre-push hooks.
 - **Usage:**
 
   ```bash

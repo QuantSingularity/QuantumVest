@@ -52,15 +52,15 @@ backend wired together automatically via a shared volume).
 
 ## Layout
 
-- `contracts/DataTracking.sol` — on-chain market data ticker log.
-- `contracts/TrendAnalysis.sol` — Chainlink price feed reader / moving average.
-- `contracts/QuantumVestToken.sol` — ERC20 with compliance/blacklist/vesting controls.
-- `contracts/PortfolioManager.sol` — user portfolios and supported-asset accounting.
-- `contracts/QuantumVestStaking.sol` — multi-pool staking and rewards.
-- `contracts/QuantumVestGovernance.sol` — token-weighted proposals and voting.
-- `contracts/QuantumVestOracle.sol` — on-chain price registry with staleness/confidence guards.
-- `contracts/Migrations.sol` — Truffle's migration tracker.
-- `contracts/mocks/` — `MockV3Aggregator` and `MockERC20`, used only by the test suite.
+- `contracts/DataTracking.sol` - on-chain market data ticker log.
+- `contracts/TrendAnalysis.sol` - Chainlink price feed reader / moving average.
+- `contracts/QuantumVestToken.sol` - ERC20 with compliance/blacklist/vesting controls.
+- `contracts/PortfolioManager.sol` - user portfolios and supported-asset accounting.
+- `contracts/QuantumVestStaking.sol` - multi-pool staking and rewards.
+- `contracts/QuantumVestGovernance.sol` - token-weighted proposals and voting.
+- `contracts/QuantumVestOracle.sol` - on-chain price registry with staleness/confidence guards.
+- `contracts/Migrations.sol` - Truffle's migration tracker.
+- `contracts/mocks/` - `MockV3Aggregator` and `MockERC20`, used only by the test suite.
 
 ## Notable fixes made to this project
 
@@ -68,7 +68,7 @@ backend wired together automatically via a shared volume).
   since `@openzeppelin/contracts` and `@chainlink/contracts` were never
   installed anywhere.
 - `TrendAnalysis.sol` called `priceFeed.latestRound()`, which doesn't exist
-  on `AggregatorV3Interface` — this was a compile error. Replaced with
+  on `AggregatorV3Interface` - this was a compile error. Replaced with
   `latestRoundData()` plus underflow/zero-window guards.
 - The five contracts formerly bundled in a single `smart_contracts.sol` at
   the project root were never actually compiled by Truffle, since they

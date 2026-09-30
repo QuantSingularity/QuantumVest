@@ -44,7 +44,7 @@ rotate_logs() {
   echo -e "\n${BLUE}Rotating logs...${NC}"
 
   # Create logs directories if they don't exist (including the archive
-  # directory — the "compress"/"delete old" steps below run unconditionally
+  # directory - the "compress"/"delete old" steps below run unconditionally
   # even when no log files were found to rotate this time around).
   mkdir -p logs logs/archive
 
@@ -103,7 +103,7 @@ backup_data() {
   echo -e "${BLUE}Backing up database...${NC}"
 
   # The application reads its DB connection string from code/backend/.env's
-  # DATABASE_URL (see config.py) — not a top-level .env, which nothing in
+  # DATABASE_URL (see config.py) - not a top-level .env, which nothing in
   # the app actually consumes.
   if [ -f "code/backend/.env" ]; then
     DB_URL=$(grep -m1 '^DATABASE_URL=' code/backend/.env | cut -d= -f2-)
@@ -267,7 +267,7 @@ check_health() {
         echo "psql not found. Could not check database connection." >> "$HEALTH_REPORT"
       fi
     else
-      echo "DATABASE_URL is not a postgresql:// URL (e.g. sqlite) — skipping connection check." >> "$HEALTH_REPORT"
+      echo "DATABASE_URL is not a postgresql:// URL (e.g. sqlite) - skipping connection check." >> "$HEALTH_REPORT"
     fi
   else
     echo "code/backend/.env not found. Could not check database connection." >> "$HEALTH_REPORT"

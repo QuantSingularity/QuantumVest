@@ -10,7 +10,7 @@ FROM python:3.11-slim AS builder
 WORKDIR /build
 
 # Build tools for packages with C extensions (numpy, scipy, scikit-learn,
-# pandas, statsmodels, cryptography, bcrypt) — not needed in the final image.
+# pandas, statsmodels, cryptography, bcrypt) - not needed in the final image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -47,7 +47,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
     CMD wget -qO- http://localhost:8080/api/v1/health || exit 1
 
-# wsgi.py defines `app = create_app(...)` — there is no main.py/app.py in
+# wsgi.py defines `app = create_app(...)` - there is no main.py/app.py in
 # this backend. Access/error logs go to stdout/stderr (`-`) rather than a
 # file, since the container is intended to run with a read-only root
 # filesystem (see docker-compose.yml: read_only: true).

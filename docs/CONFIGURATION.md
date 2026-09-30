@@ -669,6 +669,6 @@ ENABLE_SENTRY=False
 
 For more information:
 
-- [Installation Guide](INSTALLATION.md) — Setup instructions
-- [Troubleshooting](TROUBLESHOOTING.md) — Common issues
-- [Security Guide](CONTRIBUTING.md#security) — Security best practices
+- [Installation Guide](INSTALLATION.md) - Setup instructions
+- [Troubleshooting](TROUBLESHOOTING.md) - Common issues
+- [Security Guide](CONTRIBUTING.md#security) - Security best practices

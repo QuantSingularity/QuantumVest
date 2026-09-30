@@ -1,4 +1,4 @@
-# QuantumVest — AI-Powered Investment Analytics Platform
+# QuantumVest - AI-Powered Investment Analytics Platform
 
 A comprehensive investment analytics platform with AI-driven predictions, portfolio optimization, real-time data, and blockchain integration.
 
@@ -93,7 +93,7 @@ Authorization: Bearer <access_token>
 | `redis`              | Redis 7 (cache + broker)                                                        | 6379 |
 | `web-frontend`       | Built React/Vite app served via nginx                                           | 3000 |
 | `ganache`            | Local dev blockchain (optional, `--profile blockchain`)                         | 8545 |
-| `blockchain-migrate` | Deploys the contracts to `ganache` and exits (optional, `--profile blockchain`) | —    |
+| `blockchain-migrate` | Deploys the contracts to `ganache` and exits (optional, `--profile blockchain`) | -    |
 
 ```bash
 # Start the core stack

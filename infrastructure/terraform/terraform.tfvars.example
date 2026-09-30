@@ -13,11 +13,11 @@ instance_type     = "t3.medium"
 db_instance_class = "db.t3.micro"
 db_name           = "quantumvestdb"
 
-# Restricted SSH — use your VPN/bastion CIDR, not 0.0.0.0/0
+# Restricted SSH - use your VPN/bastion CIDR, not 0.0.0.0/0
 allowed_ssh_cidr  = "10.0.0.0/8"
 
 # ACM certificate for the ALB's HTTPS listener. Leave unset (or "") to
-# deploy HTTP-only — e.g. before a cert has been issued/validated for your
+# deploy HTTP-only - e.g. before a cert has been issued/validated for your
 # domain. Once you have one:
 # certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 

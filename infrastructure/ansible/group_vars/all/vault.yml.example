@@ -1,5 +1,5 @@
 ---
-# Copy to vault.yml (in this same group_vars/all/ directory) and encrypt it —
+# Copy to vault.yml (in this same group_vars/all/ directory) and encrypt it -
 # never commit plaintext secrets:
 #   cp vault.yml.example vault.yml
 #   ansible-vault encrypt vault.yml

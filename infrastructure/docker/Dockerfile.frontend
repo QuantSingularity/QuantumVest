@@ -15,7 +15,7 @@ RUN npm ci --ignore-scripts && \
 COPY web-frontend/ .
 
 # web-frontend is built with Vite: only VITE_-prefixed variables are exposed
-# to client code (import.meta.env), and only as baked into this build — a
+# to client code (import.meta.env), and only as baked into this build - a
 # static SPA can't read container environment variables at runtime. The
 # default "/api/v1" is a relative path proxied by nginx (see nginx.conf's
 # /api/ location) or a Kubernetes Ingress (see kubernetes/base/ingress.yaml),

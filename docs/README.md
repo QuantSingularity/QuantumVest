@@ -42,42 +42,42 @@ Access the application at `http://localhost:3000` (frontend) and `http://localho
 
 ### Getting Started
 
-- **[Installation Guide](INSTALLATION.md)** — System prerequisites, installation options (Docker, pip, manual), and environment setup
-- **[Quick Start Guide](getting_started.md)** — First-time user walkthrough, account setup, and basic operations
-- **[Configuration Guide](CONFIGURATION.md)** — Environment variables, database setup, API keys, and service configuration
+- **[Installation Guide](INSTALLATION.md)** - System prerequisites, installation options (Docker, pip, manual), and environment setup
+- **[Quick Start Guide](getting_started.md)** - First-time user walkthrough, account setup, and basic operations
+- **[Configuration Guide](CONFIGURATION.md)** - Environment variables, database setup, API keys, and service configuration
 
 ### Core Documentation
 
-- **[Usage Guide](USAGE.md)** — Common workflows, CLI usage, library API usage, and practical examples
-- **[API Reference](API.md)** — Complete REST API documentation with endpoints, parameters, and examples
-- **[CLI Reference](CLI.md)** — Command-line interface commands, flags, and usage patterns
-- **[Feature Matrix](FEATURE_MATRIX.md)** — Comprehensive feature catalog with module mapping and availability
+- **[Usage Guide](USAGE.md)** - Common workflows, CLI usage, library API usage, and practical examples
+- **[API Reference](API.md)** - Complete REST API documentation with endpoints, parameters, and examples
+- **[CLI Reference](CLI.md)** - Command-line interface commands, flags, and usage patterns
+- **[Feature Matrix](FEATURE_MATRIX.md)** - Comprehensive feature catalog with module mapping and availability
 
 ### Architecture & Development
 
-- **[Architecture Overview](ARCHITECTURE.md)** — System design, module structure, data flow, and component diagrams
-- **[Data Pipeline Architecture](data_pipeline_architecture.md)** — ETL processes, data storage, feature engineering, and model serving
-- **[AI Models Documentation](ai_models_documentation.md)** — Machine learning models, training procedures, and inference APIs
-- **[Blockchain Integration](blockchain_integration.md)** — Smart contracts, on-chain data collection, and Web3 integration
+- **[Architecture Overview](ARCHITECTURE.md)** - System design, module structure, data flow, and component diagrams
+- **[Data Pipeline Architecture](data_pipeline_architecture.md)** - ETL processes, data storage, feature engineering, and model serving
+- **[AI Models Documentation](ai_models_documentation.md)** - Machine learning models, training procedures, and inference APIs
+- **[Blockchain Integration](blockchain_integration.md)** - Smart contracts, on-chain data collection, and Web3 integration
 
 ### Advanced Topics
 
-- **[Developer Guide](CONTRIBUTING.md)** — Contributing guidelines, code style, testing, and development workflow
-- **[Infrastructure Guide](infrastructure_guide.md)** — Kubernetes deployment, CI/CD, monitoring, and DevOps
-- **[Troubleshooting Guide](TROUBLESHOOTING.md)** — Common issues, debugging tips, and FAQ
+- **[Developer Guide](CONTRIBUTING.md)** - Contributing guidelines, code style, testing, and development workflow
+- **[Infrastructure Guide](infrastructure_guide.md)** - Kubernetes deployment, CI/CD, monitoring, and DevOps
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)** - Common issues, debugging tips, and FAQ
 
 ### Examples & Tutorials
 
-- **[Examples Directory](EXAMPLES/)** — Working code examples demonstrating key features
+- **[Examples Directory](EXAMPLES/)** - Working code examples demonstrating key features
   - [Portfolio Management Example](EXAMPLES/portfolio-management.md)
   - [AI Prediction Example](EXAMPLES/ai-prediction.md)
   - [Risk Analysis Example](EXAMPLES/risk-analysis.md)
 
 ### Additional Resources
 
-- **[Technical Documentation](technical_documentation.md)** — Deep technical specifications and design decisions
-- **[User Manual](user_manual.md)** — End-user guide for web and mobile applications
-- **[Project Structure](project%20structure.md)** — Directory layout and file organization
+- **[Technical Documentation](technical_documentation.md)** - Deep technical specifications and design decisions
+- **[User Manual](user_manual.md)** - End-user guide for web and mobile applications
+- **[Project Structure](project%20structure.md)** - Directory layout and file organization
 
 ---
 

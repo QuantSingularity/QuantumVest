@@ -75,7 +75,7 @@ spec:
           # No runtime env vars here: this is a pre-built static SPA served
           # by nginx, which can't read container environment variables and
           # inject them into an already-compiled JS bundle. The API base URL
-          # is baked in at image build time — see Dockerfile.frontend's
+          # is baked in at image build time - see Dockerfile.frontend's
           # VITE_API_BASE_URL build arg (defaults to the relative path
           # "/api/v1", proxied to the backend by this chart's Ingress, so it
           # works unchanged in every environment without a rebuild).

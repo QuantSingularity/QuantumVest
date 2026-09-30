@@ -139,7 +139,7 @@ deploy_backend() {
       pip install gunicorn
     fi
 
-    # The Flask app factory lives in wsgi.py (app = create_app(...)) — there
+    # The Flask app factory lives in wsgi.py (app = create_app(...)) - there
     # is no main.py in this backend.
     echo -e "${BLUE}Starting backend services with Gunicorn...${NC}"
     (cd code/backend && FLASK_ENV=production gunicorn wsgi:app --workers 4 --bind 0.0.0.0:8000 --daemon)
