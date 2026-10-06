@@ -17,7 +17,7 @@ from app.extensions import db
 from app.models.financial import Asset, Watchlist, WatchlistItem
 from app.services.blockchain import BlockchainService
 from app.services.portfolio import PortfolioService
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, current_app, jsonify, request
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
@@ -49,12 +49,26 @@ def health_check() -> Response:
     except Exception:
         pass
 
+    ai_ok = False
+    try:
+        from app.services.ai import get_ai_service
+
+        ai_ok = bool(current_app.config.get("AI_ENABLED", True)) and (
+            get_ai_service().status()["available"]
+        )
+    except Exception:
+        pass
+
     return jsonify(
         {
             "status": "healthy" if db_ok else "degraded",
             "version": "2.0.0",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "services": {"database": db_ok, "blockchain": blockchain_ok},
+            "services": {
+                "database": db_ok,
+                "blockchain": blockchain_ok,
+                "ai_models": ai_ok,
+            },
         }
     )
 
@@ -355,16 +369,31 @@ def get_portfolio_performance(
 @premium_required
 def optimize_portfolio(current_user: Any, portfolio_id: str) -> Tuple[Response, int]:
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
+
+        def number(name: str, default: Any = None) -> Any:
+            value = data.get(name)
+            return default if value is None else float(value)
+
+        risk_tolerance = number("risk_tolerance", current_user.risk_tolerance)
+        if risk_tolerance is None:
+            risk_tolerance = 0.5
         result = PortfolioService.optimize_portfolio(
             portfolio_id=portfolio_id,
             user_id=str(current_user.id),
-            target_return=data.get("target_return"),
-            risk_tolerance=data.get(
-                "risk_tolerance", current_user.risk_tolerance or 0.5
-            ),
+            target_return=number("target_return"),
+            risk_tolerance=risk_tolerance,
+            objective=data.get("objective"),
+            max_weight=number("max_weight"),
+            min_weight=number("min_weight", 0.0),
+            use_forecasts=bool(data.get("use_forecasts", False)),
         )
-        return (jsonify(result), 200) if result["success"] else (jsonify(result), 400)
+        if result["success"]:
+            return jsonify(result), 200
+        status = 404 if result["error"] == "Portfolio not found" else 400
+        return jsonify(result), status
+    except (TypeError, ValueError) as exc:
+        return jsonify({"success": False, "error": f"Invalid input: {exc}"}), 400
     except Exception as exc:
         logger.error("optimize_portfolio error: %s", exc)
         return jsonify({"success": False, "error": "Failed to optimize portfolio"}), 500

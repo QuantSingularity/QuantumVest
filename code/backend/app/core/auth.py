@@ -13,6 +13,10 @@ from app.models.financial import User, UserRole
 from flask import current_app, jsonify, request
 
 
+def _signing_key() -> str:
+    return current_app.config.get("JWT_SECRET_KEY") or current_app.config["SECRET_KEY"]
+
+
 class AuthService:
     """Authentication and user-management service."""
 
@@ -24,7 +28,7 @@ class AuthService:
             "iat": datetime.now(timezone.utc),
             "type": "access",
         }
-        return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+        return jwt.encode(payload, _signing_key(), algorithm="HS256")
 
     @staticmethod
     def generate_refresh_token(user_id: Any, expires_in: int = 168) -> str:
@@ -34,7 +38,7 @@ class AuthService:
             "iat": datetime.now(timezone.utc),
             "type": "refresh",
         }
-        return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+        return jwt.encode(payload, _signing_key(), algorithm="HS256")
 
     @staticmethod
     def generate_reset_token(user_id: Any, expires_in: int = 1) -> str:
@@ -44,13 +48,13 @@ class AuthService:
             "iat": datetime.now(timezone.utc),
             "type": "reset",
         }
-        return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+        return jwt.encode(payload, _signing_key(), algorithm="HS256")
 
     @staticmethod
     def verify_token(token: str) -> Optional[str]:
         try:
             payload = jwt.decode(
-                token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
+                token, _signing_key(), algorithms=["HS256"]
             )
             return payload["user_id"]
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
@@ -138,11 +142,13 @@ class AuthService:
                 if locked_until.tzinfo is None:
                     locked_until = locked_until.replace(tzinfo=timezone.utc)
                 if locked_until > now:
-                    remaining = int((locked_until - now).total_seconds() / 60)
+                    remaining = max(1, int((locked_until - now).total_seconds() / 60))
                     return {
                         "success": False,
                         "error": f"Account locked. Try again in {remaining} minutes.",
                     }
+                user.account_locked_until = None
+                user.failed_login_attempts = 0
 
             if not user.check_password(password):
                 user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
@@ -174,7 +180,7 @@ class AuthService:
     def refresh_access_token(refresh_token: str) -> Dict[str, Any]:
         try:
             payload = jwt.decode(
-                refresh_token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
+                refresh_token, _signing_key(), algorithms=["HS256"]
             )
             if payload.get("type") != "refresh":
                 return {"success": False, "error": "Invalid token type"}
@@ -254,7 +260,7 @@ class AuthService:
     def reset_password(reset_token: str, new_password: str) -> Dict[str, Any]:
         try:
             payload = jwt.decode(
-                reset_token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
+                reset_token, _signing_key(), algorithms=["HS256"]
             )
             if payload.get("type") != "reset":
                 return {"success": False, "error": "Invalid or expired reset token"}

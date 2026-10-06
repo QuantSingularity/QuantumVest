@@ -6,6 +6,16 @@ import os
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def _resolve_dir(value: str) -> str:
+    return value if os.path.isabs(value) else os.path.join(BASE_DIR, value)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+
 
 def _engine_options(db_url: str) -> Dict[str, Any]:
     if db_url.startswith("sqlite"):
@@ -23,7 +33,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
     SQLALCHEMY_ENGINE_OPTIONS: Dict[str, Any] = {}
 
-    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY", SECRET_KEY)
+    JWT_SECRET_KEY: str = os.environ.get("JWT_SECRET_KEY") or SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(hours=24)
     JWT_REFRESH_TOKEN_EXPIRES: timedelta = timedelta(days=7)
 
@@ -47,8 +57,20 @@ class Config:
     MAX_LOGIN_ATTEMPTS: int = int(os.environ.get("MAX_LOGIN_ATTEMPTS", "5"))
     ACCOUNT_LOCKOUT_MINUTES: int = int(os.environ.get("ACCOUNT_LOCKOUT_MINUTES", "30"))
 
-    MODEL_PATH: str = os.environ.get("MODEL_PATH", "resources/models")
-    DATA_PATH: str = os.environ.get("DATA_PATH", "resources/data")
+    MODEL_PATH: str = _resolve_dir(os.environ.get("MODEL_PATH", "resources/models"))
+    DATA_PATH: str = _resolve_dir(os.environ.get("DATA_PATH", "resources/data"))
+
+    AI_ENABLED: bool = _env_bool("AI_ENABLED", True)
+    AI_DEFAULT_MODEL: str = os.environ.get("AI_DEFAULT_MODEL", "ensemble")
+    AI_AUTO_TRAIN: bool = _env_bool("AI_AUTO_TRAIN", True)
+    AI_MODEL_MAX_AGE_DAYS: int = int(os.environ.get("AI_MODEL_MAX_AGE_DAYS", "7"))
+    AI_MARKET_DATA_TTL_SECONDS: int = int(
+        os.environ.get("AI_MARKET_DATA_TTL_SECONDS", "43200")
+    )
+    AI_MAX_CONCURRENT_TRAINING: int = int(
+        os.environ.get("AI_MAX_CONCURRENT_TRAINING", "2")
+    )
+    AI_FORECAST_WEIGHT: float = float(os.environ.get("AI_FORECAST_WEIGHT", "0.3"))
 
     # ─── Blockchain (Web3 gateway to ../blockchain) ─────────────────────
     # See app/services/blockchain.py. Everything here is optional: with no
@@ -107,7 +129,14 @@ class DevelopmentConfig(Config):
     DEBUG: bool = True
     TESTING: bool = False
     SQLALCHEMY_DATABASE_URI: str = os.environ.get(
-        "DEV_DATABASE_URL", "sqlite:///quantumvest_dev.db"
+        "DEV_DATABASE_URL",
+        os.environ.get("DATABASE_URL", "sqlite:///quantumvest_dev.db"),
+    )
+    SQLALCHEMY_ENGINE_OPTIONS: Dict[str, Any] = _engine_options(
+        os.environ.get(
+            "DEV_DATABASE_URL",
+            os.environ.get("DATABASE_URL", "sqlite:///quantumvest_dev.db"),
+        )
     )
     BCRYPT_LOG_ROUNDS: int = 4
 
@@ -124,6 +153,9 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     DEBUG: bool = False
     TESTING: bool = False
+    SQLALCHEMY_ENGINE_OPTIONS: Dict[str, Any] = _engine_options(
+        os.environ.get("DATABASE_URL", "sqlite:///quantumvest.db")
+    )
 
     @classmethod
     def init_app(cls, app: Any) -> None:
@@ -139,6 +171,7 @@ _config_map = {
     "development": DevelopmentConfig,
     "testing": TestingConfig,
     "production": ProductionConfig,
+    "docker": ProductionConfig,
     "default": DevelopmentConfig,
 }
 

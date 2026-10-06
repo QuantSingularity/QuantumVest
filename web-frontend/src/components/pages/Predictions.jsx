@@ -1,27 +1,62 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AssetSearchBox from "../ui/AssetSearchBox";
+import LoadingSpinner from "../ui/LoadingSpinner";
+import ForecastChart from "../charts/ForecastChart";
+import { predictionAPI } from "../../services/api";
+import { getErrorMessage } from "../../utils/helpers";
+import {
+  assetTypeLabel,
+  formatCurrency,
+  formatNumber,
+  formatSignedPercent,
+  trendClass,
+} from "../../utils/finance";
 import "../../styles/Predictions.css";
 
-const ROADMAP = [
-  {
-    title: "GE-LSTM-Attn forecasting",
-    description:
-      "Graph-enhanced LSTM with attention and GraphSHAP explainability, currently in research.",
-  },
-  {
-    title: "Quantum Graph Reinforcement Learning",
-    description:
-      "QGRL-based liquidity and allocation research, theoretical pending quantum hardware access.",
-  },
-  {
-    title: "Live inference API",
-    description:
-      "Once validated, models will be exposed through a versioned /predictions endpoint.",
-  },
-];
+const HORIZONS = [5, 7, 14, 30];
+
+const DIRECTION_LABEL = { up: "Upward", down: "Downward", neutral: "Neutral" };
+
+const pct = (value) =>
+  value === null || value === undefined
+    ? "-"
+    : `${(Number(value) * 100).toFixed(1)}%`;
 
 const Predictions = () => {
   const [asset, setAsset] = useState(null);
+  const [days, setDays] = useState(7);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  const load = useCallback(async (selected, horizon) => {
+    if (!selected) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+    try {
+      const { data } = await predictionAPI.get(selected.symbol, {
+        asset_type: selected.asset_type,
+        days: horizon,
+      });
+      if (data.success) {
+        setResult(data);
+      } else {
+        setError(data.error || "Forecast unavailable");
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, "Could not generate a forecast."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(asset, days);
+  }, [asset, days, load]);
+
+  const metrics = result?.model?.metrics || {};
+  const beatsNaive = result?.model?.beats_naive;
 
   return (
     <div className="predictions-page">
@@ -29,61 +64,138 @@ const Predictions = () => {
         <div>
           <span className="section-eyebrow">AI Predictions</span>
           <h2>Market forecasting</h2>
-          <p>Search any asset to check forecast availability.</p>
+          <p>
+            Model-backed price forecasts with uncertainty bands and held-out
+            accuracy.
+          </p>
         </div>
       </div>
 
       <div className="card">
-        <AssetSearchBox
-          onSelect={setAsset}
-          placeholder="Search an asset to check forecast availability…"
-        />
-
-        <div className="predictions-empty">
-          <div
-            className="empty-state-icon"
-            style={{ margin: "0 auto var(--space-sm)" }}
-          >
-            <span style={{ fontSize: "1.5rem" }}>🧠</span>
+        <div className="predictions-controls">
+          <div className="predictions-search">
+            <AssetSearchBox
+              onSelect={setAsset}
+              placeholder="Search an asset to forecast"
+            />
           </div>
-          {asset ? (
-            <>
-              <h4>No live forecast for {asset.symbol} yet</h4>
-              <p>
-                QuantumVest&apos;s prediction models are still in research and
-                haven&apos;t been connected to a production inference endpoint.
-                We&apos;d rather show nothing than a number we can&apos;t stand
-                behind.
-              </p>
-            </>
-          ) : (
-            <>
-              <h4>Prediction engine - in research</h4>
-              <p>
-                This page will show real, model-backed forecasts once the
-                inference API ships. Until then we won&apos;t fabricate numbers
-                here.
-              </p>
-            </>
-          )}
+          <div className="predictions-horizons" role="group" aria-label="Horizon">
+            {HORIZONS.map((h) => (
+              <button
+                key={h}
+                type="button"
+                className={`btn btn-sm ${days === h ? "btn-primary" : "btn-secondary"}`}
+                onClick={() => setDays(h)}
+                disabled={loading}
+              >
+                {h}d
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="card">
-        <div className="section-title">
-          <h3>Research roadmap</h3>
-        </div>
-        <div className="predictions-roadmap">
-          {ROADMAP.map((r) => (
-            <div className="predictions-roadmap-item" key={r.title}>
-              <div className="auth-highlight-dot" />
+        {!asset && !loading && (
+          <div className="predictions-empty">
+            <h4>Select an asset</h4>
+            <p>
+              Pick a stock or crypto asset to generate a forecast. The first
+              request for an asset trains a model, which can take a few
+              seconds.
+            </p>
+          </div>
+        )}
+
+        {loading && (
+          <div className="predictions-empty">
+            <LoadingSpinner />
+            <p>Preparing forecast for {asset?.symbol}</p>
+          </div>
+        )}
+
+        {error && !loading && <div className="auth-alert">{error}</div>}
+
+        {result && !loading && (
+          <div className="predictions-result">
+            <div className="predictions-summary">
               <div>
-                <h4>{r.title}</h4>
-                <p>{r.description}</p>
+                <span className="text-secondary">
+                  {result.symbol} ({assetTypeLabel(result.asset_type)})
+                </span>
+                <h3>{formatCurrency(result.last_price)}</h3>
+                <span className="text-secondary">
+                  Last close {result.last_timestamp}
+                </span>
+              </div>
+              <div>
+                <span className="text-secondary">
+                  Expected move over {result.steps} days
+                </span>
+                <h3 className={trendClass(result.expected_return)}>
+                  {formatSignedPercent(result.expected_return * 100)}
+                </h3>
+                <span className="badge badge-info">
+                  {DIRECTION_LABEL[result.direction] || result.direction}
+                </span>
+              </div>
+              <div>
+                <span className="text-secondary">Held-out accuracy</span>
+                <h3>{pct(metrics.directional_accuracy)}</h3>
+                <span className="text-secondary">
+                  direction hit rate on {metrics.samples ?? 0} days
+                </span>
               </div>
             </div>
-          ))}
-        </div>
+
+            {!beatsNaive && (
+              <div className="auth-alert">
+                This model did not beat a no-change baseline on held-out data.
+                Treat the forecast as indicative only.
+              </div>
+            )}
+
+            <ForecastChart
+              lastDate={result.last_timestamp}
+              lastPrice={result.last_price}
+              forecast={result.forecast}
+            />
+
+            <div className="table-scroll">
+              <table className="qv-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Predicted price</th>
+                    <th>95% range</th>
+                    <th>Cumulative</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.forecast.map((row) => (
+                    <tr key={row.date}>
+                      <td>{row.date}</td>
+                      <td className="mono">{formatCurrency(row.predicted_price)}</td>
+                      <td className="mono">
+                        {formatCurrency(row.lower)} to {formatCurrency(row.upper)}
+                      </td>
+                      <td className={`mono ${trendClass(row.cumulative_return)}`}>
+                        {formatSignedPercent(row.cumulative_return * 100)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-secondary predictions-footnote">
+              Model: {result.model.type}
+              {result.model.components?.length > 1
+                ? ` (${result.model.components.join(", ")})`
+                : ""}
+              , skill vs naive {formatNumber((metrics.skill_vs_naive ?? 0) * 100, 1)}%.
+              Forecasts are statistical estimates, not financial advice.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ FROM python:3.11-slim AS production
 # code, so unlike mysqlclient it needs no libmysqlclient at all.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 1000 appuser \
     && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
@@ -34,6 +35,7 @@ WORKDIR /app
 # Bring in the packages built above (installed to the builder's user site-packages)
 COPY --from=builder /root/.local /home/appuser/.local
 COPY code/backend/ .
+COPY code/ai_models/ ai_models/
 
 RUN chown -R appuser:appuser /app /home/appuser/.local
 

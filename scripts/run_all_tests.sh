@@ -76,8 +76,8 @@ elif ! find "${AI_MODELS_DIR}" -name "test_*.py" -o -name "*_test.py" 2>/dev/nul
     echo "Warning: No test files (test_*.py / *_test.py) found in ${AI_MODELS_DIR}. Skipping."
 else
     cd "${AI_MODELS_DIR}"
-    echo "Running AI model tests with 'python3 -m unittest discover'..."
-    python3 -m unittest discover || { echo "Error: AI model tests failed." >&2; cd "${PROJECT_DIR}"; exit 1; }
+    echo "Running AI model tests with 'python3 -m pytest'..."
+    cd "${PROJECT_DIR}/code" && python3 -m pytest ai_models/tests -q || { echo "Error: AI model tests failed." >&2; cd "${PROJECT_DIR}"; exit 1; }
     echo "AI model tests completed successfully."
     cd "${PROJECT_DIR}" # Return to the main project directory
 fi

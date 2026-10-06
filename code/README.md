@@ -128,13 +128,18 @@ quantumvest/
 │   └── data_pipeline/
 │       ├── stock_api.py        # Yahoo Finance fetcher
 │       ├── crypto_api.py       # CoinGecko fetcher
-│       ├── lstm_model.py       # LSTM time-series model
-│       ├── prediction_service.py
 │       ├── feature_engineering.py
 │       └── data_storage.py
 ├── ai_models/
-│   ├── advanced_ai_models.py
-│   └── training_scripts/
+│   ├── data/                   # OHLCV normalization, features, loaders, preprocessing
+│   ├── models/                 # Ensemble, LSTM and Transformer forecasters
+│   ├── portfolio/              # Constrained optimizer, allocation, forecast blending
+│   ├── risk/                   # VaR, expected shortfall, stress tests
+│   ├── evaluation/             # Forecast scoring and walk-forward backtests
+│   ├── serving/                # Model store and train-on-demand engine
+│   ├── training/               # Offline training entry points
+│   ├── exceptions.py
+│   └── tests/
 ├── blockchain/                 # Truffle project - see blockchain/README.md
 │   ├── contracts/
 │   │   ├── DataTracking.sol    # On-chain market data log
@@ -155,6 +160,32 @@ quantumvest/
 > `app/services/`, `app/api/v1/routes.py`, `app/models/`, etc.). The
 > blockchain-related entries above are current.
 
+## AI Models Integration
+
+The backend imports `ai_models` directly (`backend/app/services/ai.py`), and the
+Docker image bundles both directories, so the build context is this folder.
+
+| Endpoint                                | Access        | Description                                                         |
+| --------------------------------------- | ------------- | ------------------------------------------------------------------- |
+| `GET /api/v1/predictions/<symbol>`      | Authenticated | Forecast with 95% bands. Query: `days` (1-30), `asset_type`, `model` |
+| `GET /api/v1/predictions/models`        | Authenticated | Trained models with held-out metrics                                |
+| `POST /api/v1/predictions/<symbol>/train` | Admin       | Force a retrain (`model_type`, `epochs`)                            |
+| `POST /api/v1/portfolios/<id>/optimize` | Manager/Admin | `objective`, `target_return`, `max_weight`, `use_forecasts`         |
+| `GET /api/v1/portfolios/<id>/risk`      | Authenticated | VaR, expected shortfall, stress tests, risk contributions           |
+
+Tree models (XGBoost, LightGBM, random forest, CatBoost when installed) train on
+first request and retrain when older than `AI_MODEL_MAX_AGE_DAYS`. LSTM and
+Transformer models require TensorFlow and are trained offline:
+
+```bash
+python -m ai_models.training.prediction --symbol AAPL --model-type lstm
+python -m ai_models.training.optimization --symbols AAPL,MSFT,GOOGL --evaluate
+python -m ai_models.training.pipeline --symbols AAPL MSFT BTC:crypto
+python -m pytest ai_models
+```
+
+Run these from this directory with `pip install -r ai_models/requirements-dev.txt`.
+
 ## Environment Variables
 
 See `backend/.env.example` for full reference. Key variables:
@@ -166,6 +197,9 @@ See `backend/.env.example` for full reference. Key variables:
 | `DATABASE_URL`             | Yes      | SQLite or PostgreSQL URL                                                                                            |
 | `REDIS_URL`                | No       | Falls back to SimpleCache                                                                                           |
 | `FLASK_ENV`                | No       | `development`/`production`/`docker`                                                                                 |
+| `AI_ENABLED`               | No       | Set `false` to disable prediction and optimization endpoints (default `true`)                                       |
+| `AI_AUTO_TRAIN`            | No       | Train missing tree models on first request (default `true`)                                                         |
+| `MODEL_PATH`               | No       | Directory for trained models. Defaults to `backend/resources/models`                                                |
 | `WEB3_PROVIDER_URI`        | No       | Blockchain RPC endpoint. Falls back to disconnected (blockchain features disabled) if unreachable                   |
 | `BLOCKCHAIN_ARTIFACTS_DIR` | No       | Truffle build output dir used to resolve deployed contract addresses. Defaults to `../blockchain/build/contracts`   |
 | `BLOCKCHAIN_PRIVATE_KEY`   | No       | Signing key for on-chain writes (DataTracking contract owner). Leave unset to keep blockchain integration read-only |

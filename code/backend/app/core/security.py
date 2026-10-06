@@ -101,13 +101,13 @@ class AuthenticationService:
             "exp": datetime.now(timezone.utc) + timedelta(seconds=expires_in),
             "iat": datetime.now(timezone.utc),
         }
-        return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+        return jwt.encode(payload, (current_app.config.get("JWT_SECRET_KEY") or current_app.config["SECRET_KEY"]), algorithm="HS256")
 
     @staticmethod
     def verify_jwt_token(token: str) -> Optional[Dict[str, Any]]:
         try:
             return jwt.decode(
-                token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
+                token, (current_app.config.get("JWT_SECRET_KEY") or current_app.config["SECRET_KEY"]), algorithms=["HS256"]
             )
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return None

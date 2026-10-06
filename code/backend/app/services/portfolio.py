@@ -5,13 +5,14 @@ Portfolio management service: CRUD, transaction processing, performance analytic
 import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from app.extensions import db
 from app.models.financial import (
     Asset,
+    AssetType,
     Portfolio,
     PortfolioHolding,
     PortfolioPerformance,
@@ -182,6 +183,12 @@ class PortfolioService:
             qty = Decimal(str(quantity))
             px = Decimal(str(price))
             fee = Decimal(str(fees))
+            if not (qty.is_finite() and px.is_finite() and fee.is_finite()):
+                return {"success": False, "error": "Numeric values must be finite"}
+            if qty <= 0:
+                return {"success": False, "error": "Quantity must be positive"}
+            if px < 0 or fee < 0:
+                return {"success": False, "error": "Price and fees must not be negative"}
             total_amount = qty * px + fee
 
             transaction = Transaction(
@@ -218,6 +225,7 @@ class PortfolioService:
 
             elif trans_type == TransactionType.SELL:
                 if not holding or holding.quantity < qty:
+                    db.session.rollback()
                     return {"success": False, "error": "Insufficient holdings to sell"}
                 realized_pnl = (px - holding.average_cost) * qty
                 transaction.realized_pnl = realized_pnl
@@ -346,19 +354,74 @@ class PortfolioService:
             return {"success": False, "error": str(exc)}
 
     @staticmethod
+    def _holding_prices(
+        holdings: List[PortfolioHolding], days: int = 400
+    ) -> Tuple[pd.DataFrame, Dict[str, str], Dict[str, float]]:
+        from app.services.ai import get_ai_service
+
+        service = get_ai_service()
+        series: Dict[str, pd.Series] = {}
+        asset_types: Dict[str, str] = {}
+        values: Dict[str, float] = {}
+        for holding in holdings:
+            asset = db.session.get(Asset, holding.asset_id)
+            if asset is None:
+                continue
+            kind = "crypto" if asset.asset_type == AssetType.CRYPTO else "stock"
+            close = PortfolioService._db_close_series(asset.id, days)
+            if close is None or len(close) < 60:
+                try:
+                    close = service.close_series(asset.symbol, kind)
+                except Exception as exc:
+                    logger.info("No price history for %s: %s", asset.symbol, exc)
+                    continue
+            series[asset.symbol] = close
+            asset_types[asset.symbol] = kind
+            values[asset.symbol] = float(holding.quantity) * float(close.iloc[-1])
+        if not series:
+            return pd.DataFrame(), asset_types, values
+        prices = pd.DataFrame(series).dropna()
+        return prices, asset_types, values
+
+    @staticmethod
+    def _db_close_series(asset_id: str, days: int) -> Optional[pd.Series]:
+        end = datetime.now(timezone.utc)
+        start = end - timedelta(days=days)
+        rows = (
+            PriceData.query.filter(
+                and_(
+                    PriceData.asset_id == asset_id,
+                    PriceData.timestamp >= start,
+                    PriceData.timestamp <= end,
+                    PriceData.interval == "1d",
+                )
+            )
+            .order_by(PriceData.timestamp)
+            .all()
+        )
+        if len(rows) < 2:
+            return None
+        index = pd.DatetimeIndex(
+            [
+                r.timestamp.replace(tzinfo=None) if r.timestamp.tzinfo else r.timestamp
+                for r in rows
+            ]
+        ).normalize()
+        series = pd.Series([float(r.close_price) for r in rows], index=index)
+        return series[~series.index.duplicated(keep="last")]
+
+    @staticmethod
     def optimize_portfolio(
         portfolio_id: str,
         user_id: str,
         target_return: Optional[float] = None,
         risk_tolerance: float = 0.5,
+        objective: Optional[str] = None,
+        max_weight: Optional[float] = None,
+        min_weight: float = 0.0,
+        use_forecasts: bool = False,
     ) -> Dict[str, Any]:
-        try:
-            import cvxpy as cp
-        except ImportError:
-            return {
-                "success": False,
-                "error": "cvxpy not installed. Cannot optimize portfolio.",
-            }
+        from app.services.ai import OptimizationError, get_ai_service
 
         try:
             portfolio = Portfolio.query.filter_by(
@@ -374,77 +437,43 @@ class PortfolioService:
                     "error": "Need at least 2 assets for optimization",
                 }
 
-            asset_returns = {}
-            symbols = []
-            for h in holdings:
-                rets = PortfolioService._get_asset_returns(h.asset_id, days=252)
-                if rets is not None and len(rets) > 0:
-                    asset = db.session.get(Asset, h.asset_id)
-                    if asset:
-                        asset_returns[asset.symbol] = rets
-                        symbols.append(asset.symbol)
-
-            if len(asset_returns) < 2:
+            prices, asset_types, values = PortfolioService._holding_prices(holdings)
+            if prices.shape[1] < 2:
                 return {
                     "success": False,
                     "error": "Insufficient price data for optimization",
                 }
 
-            min_len = min(len(v) for v in asset_returns.values())
-            for k in asset_returns:
-                asset_returns[k] = asset_returns[k][-min_len:]
+            if objective is None:
+                objective = "target_return" if target_return is not None else "mean_variance"
+            if target_return is not None and objective != "target_return":
+                objective = "target_return"
+            risk_tolerance = float(0.5 if risk_tolerance is None else risk_tolerance)
 
-            df = pd.DataFrame(asset_returns)
-            exp_ret = df.mean().values * 252
-            cov = df.cov().values * 252
-            n = len(symbols)
+            result = get_ai_service().optimize(
+                prices,
+                asset_types,
+                objective=objective,
+                risk_tolerance=risk_tolerance,
+                target_return=target_return,
+                min_weight=min_weight,
+                max_weight=max_weight,
+                use_forecasts=use_forecasts,
+                current_values=values,
+            )
 
-            w = cp.Variable(n)
-            obj = cp.Minimize(cp.quad_form(w, cov))
-            prob = cp.Problem(obj, [cp.sum(w) == 1, w >= 0])
-            prob.solve()
-
-            if prob.status not in ["optimal", "optimal_inaccurate"]:
-                return {
-                    "success": False,
-                    "error": f"Optimization failed: {prob.status}",
-                }
-
-            opt_w = w.value
-            port_ret = float(np.dot(opt_w, exp_ret))
-            port_vol = float(np.sqrt(max(float(prob.value), 0)))
-            sharpe = (port_ret - 0.02) / port_vol if port_vol > 0 else 0
-
+            total_value = sum(values.values())
             recs = []
-            for i, sym in enumerate(symbols):
-                holding = next(
-                    (
-                        h
-                        for h in holdings
-                        if db.session.get(Asset, h.asset_id)
-                        and db.session.get(Asset, h.asset_id).symbol == sym
-                    ),
-                    None,
-                )
-                cur_w = 0.0
-                if (
-                    holding
-                    and portfolio.total_value
-                    and float(portfolio.total_value) > 0
-                ):
-                    mv = holding.market_value or Decimal("0")
-                    cur_w = float(mv) / float(portfolio.total_value)
-                opt = float(opt_w[i])
-                diff = opt - cur_w
+            for symbol, optimal in result["weights"].items():
+                current = values.get(symbol, 0.0) / total_value if total_value > 0 else 0.0
+                diff = optimal - current
                 recs.append(
                     {
-                        "symbol": sym,
-                        "current_weight": round(cur_w, 4),
-                        "optimal_weight": round(opt, 4),
+                        "symbol": symbol,
+                        "current_weight": round(current, 4),
+                        "optimal_weight": round(optimal, 4),
                         "recommendation": (
-                            "buy"
-                            if diff > 0.05
-                            else ("sell" if diff < -0.05 else "hold")
+                            "buy" if diff > 0.05 else ("sell" if diff < -0.05 else "hold")
                         ),
                     }
                 )
@@ -452,15 +481,48 @@ class PortfolioService:
             return {
                 "success": True,
                 "optimization": {
-                    "expected_return": round(port_ret * 100, 2),
-                    "volatility": round(port_vol * 100, 2),
-                    "sharpe_ratio": round(float(sharpe), 4),
+                    "objective": result["objective"],
+                    "effective_objective": result["effective_objective"],
+                    "expected_return": round(result["expected_return"] * 100, 2),
+                    "volatility": round(result["volatility"] * 100, 2),
+                    "sharpe_ratio": round(result["sharpe_ratio"], 4),
+                    "observations": result["observations"],
+                    "forecast_assets": result["forecast_assets"],
+                    "note": result.get("note"),
+                    "risk": result["risk"],
                     "recommendations": recs,
                 },
             }
+        except OptimizationError as exc:
+            return {"success": False, "error": str(exc)}
         except Exception as exc:
             logger.error("Error optimizing portfolio: %s", exc)
+            return {"success": False, "error": "Optimization failed"}
+
+    @staticmethod
+    def get_portfolio_risk(portfolio_id: str, user_id: str) -> Dict[str, Any]:
+        from app.services.ai import OptimizationError, get_ai_service
+
+        try:
+            portfolio = Portfolio.query.filter_by(
+                id=portfolio_id, user_id=user_id
+            ).first()
+            if not portfolio:
+                return {"success": False, "error": "Portfolio not found"}
+            holdings = PortfolioHolding.query.filter_by(portfolio_id=portfolio_id).all()
+            if not holdings:
+                return {"success": False, "error": "Portfolio has no holdings"}
+            prices, asset_types, values = PortfolioService._holding_prices(holdings)
+            if prices.empty:
+                return {"success": False, "error": "Insufficient price data"}
+            weights = {s: values[s] for s in prices.columns}
+            analysis = get_ai_service().analyze_risk(prices, weights)
+            return {"success": True, "risk": analysis}
+        except OptimizationError as exc:
             return {"success": False, "error": str(exc)}
+        except Exception as exc:
+            logger.error("Error analyzing portfolio risk: %s", exc)
+            return {"success": False, "error": "Risk analysis failed"}
 
     @staticmethod
     def _get_latest_price(asset_id: str) -> Optional[Decimal]:

@@ -23,7 +23,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-quantumvest_secure_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -120,7 +119,7 @@ services:
   # ─── Flask Backend API ───────────────────────────────────────────────────
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: quantumvest_backend
     restart: unless-stopped
@@ -134,6 +133,11 @@ services:
       MAX_LOGIN_ATTEMPTS: "5"
       ACCOUNT_LOCKOUT_MINUTES: "30"
       LOG_LEVEL: INFO
+      MODEL_PATH: /app/resources/models
+      DATA_PATH: /app/resources/data
+      AI_ENABLED: ${AI_ENABLED:-true}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-ensemble}
+      AI_AUTO_TRAIN: ${AI_AUTO_TRAIN:-true}
       # Only reachable/meaningful when the blockchain profile is active;
       # otherwise BlockchainService just reports itself as disconnected.
       WEB3_PROVIDER_URI: http://ganache:8545

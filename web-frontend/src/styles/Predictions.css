@@ -30,3 +30,43 @@
   font-size: 0.85rem;
   margin: 0;
 }
+
+.predictions-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.predictions-search {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.predictions-horizons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.predictions-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.predictions-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
+}
+
+.predictions-summary h3 {
+  margin: 0.2rem 0;
+}
+
+.predictions-footnote {
+  font-size: 0.8rem;
+  margin: 0;
+}

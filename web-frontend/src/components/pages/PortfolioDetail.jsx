@@ -55,6 +55,8 @@ const PortfolioDetail = () => {
   const [optimizing, setOptimizing] = useState(false);
   const [optimization, setOptimization] = useState(null);
   const [optimizeError, setOptimizeError] = useState("");
+  const [objective, setObjective] = useState("mean_variance");
+  const [useForecasts, setUseForecasts] = useState(false);
 
   const loadCore = useCallback(async () => {
     setLoading(true);
@@ -148,7 +150,10 @@ const PortfolioDetail = () => {
     setOptimizeError("");
     setOptimization(null);
     try {
-      const { data } = await portfolioAPI.optimize(id, {});
+      const { data } = await portfolioAPI.optimize(id, {
+        objective,
+        use_forecasts: useForecasts,
+      });
       if (data.success) {
         setOptimization(data.optimization);
       } else {
@@ -354,9 +359,40 @@ const PortfolioDetail = () => {
           className="text-secondary"
           style={{ marginBottom: "var(--space-sm)" }}
         >
-          Uses mean-variance optimization over 1 year of historical returns to
-          suggest a minimum-variance allocation.
+          Computes target weights from up to a year of daily returns using
+          shrinkage return estimates and a Ledoit-Wolf covariance matrix.
         </p>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "var(--space-sm)",
+            alignItems: "center",
+            marginBottom: "var(--space-sm)",
+          }}
+        >
+          <select
+            className="input"
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            disabled={optimizing}
+            aria-label="Optimization objective"
+          >
+            <option value="mean_variance">Balanced (risk tolerance)</option>
+            <option value="max_sharpe">Maximum Sharpe ratio</option>
+            <option value="min_variance">Minimum variance</option>
+            <option value="risk_parity">Risk parity</option>
+          </select>
+          <label style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={useForecasts}
+              onChange={(e) => setUseForecasts(e.target.checked)}
+              disabled={optimizing}
+            />
+            Blend ML forecasts
+          </label>
+        </div>
         {optimizeError && <div className="auth-alert">{optimizeError}</div>}
         {optimization && (
           <>
@@ -373,7 +409,26 @@ const PortfolioDetail = () => {
               <div className="badge badge-info">
                 Sharpe: {formatNumber(optimization.sharpe_ratio)}
               </div>
+              {optimization.risk && (
+                <div className="badge badge-info">
+                  1-day VaR 95%: {formatNumber(optimization.risk.var_95 * 100)}%
+                </div>
+              )}
+              {optimization.risk && (
+                <div className="badge badge-info">
+                  Historical max drawdown:{" "}
+                  {formatNumber(optimization.risk.max_drawdown * 100)}%
+                </div>
+              )}
+              {optimization.forecast_assets?.length > 0 && (
+                <div className="badge badge-info">
+                  ML forecasts used: {optimization.forecast_assets.join(", ")}
+                </div>
+              )}
             </div>
+            {optimization.note && (
+              <div className="auth-alert">{optimization.note}</div>
+            )}
             <div className="table-scroll">
               <table className="qv-table">
                 <thead>

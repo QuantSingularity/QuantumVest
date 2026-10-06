@@ -135,7 +135,9 @@ export const portfolioAPI = {
   getPerformance: (portfolioId, days = 30) =>
     api.get(`/portfolios/${portfolioId}/performance`, { params: { days } }),
   optimize: (portfolioId, data) =>
-    api.post(`/portfolios/${portfolioId}/optimize`, data),
+    api.post(`/portfolios/${portfolioId}/optimize`, data, { timeout: 120000 }),
+  getRisk: (portfolioId) =>
+    api.get(`/portfolios/${portfolioId}/risk`, { timeout: 60000 }),
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -167,6 +169,18 @@ export const watchlistAPI = {
 export const riskAPI = {
   calculateVar: (data) => api.post("/risk/var", data),
   calculateMetrics: (data) => api.post("/risk/metrics", data),
+};
+
+// ─────────────────────────────────────────────────────────────
+// Predictions
+// ─────────────────────────────────────────────────────────────
+export const predictionAPI = {
+  get: (symbol, params = {}) =>
+    api.get(`/predictions/${encodeURIComponent(symbol)}`, {
+      params,
+      timeout: 120000,
+    }),
+  models: (params = {}) => api.get("/predictions/models", { params }),
 };
 
 // ─────────────────────────────────────────────────────────────

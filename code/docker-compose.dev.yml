@@ -56,7 +56,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: quantumvest_backend_dev
     restart: unless-stopped
@@ -79,6 +79,7 @@ services:
       BLOCKCHAIN_PRIVATE_KEY: ${BLOCKCHAIN_PRIVATE_KEY:-}
     volumes:
       - ./backend:/app
+      - ./ai_models:/app/ai_models
       - dev_models:/app/resources/models
       - dev_data:/app/resources/data
       # Read-only: populated by blockchain-migrate when the blockchain

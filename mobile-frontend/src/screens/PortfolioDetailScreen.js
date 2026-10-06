@@ -31,6 +31,13 @@ import StatCard from "../components/StatCard";
 import PerformanceLineChart from "../components/PerformanceLineChart";
 import AssetSearchInput from "../components/AssetSearchInput";
 
+const OBJECTIVES = [
+  { value: "mean_variance", label: "Balanced" },
+  { value: "max_sharpe", label: "Max Sharpe" },
+  { value: "min_variance", label: "Min risk" },
+  { value: "risk_parity", label: "Risk parity" },
+];
+
 const TX_TYPES = [
   { value: "buy", label: "Buy" },
   { value: "sell", label: "Sell" },
@@ -59,6 +66,8 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
   const [optimizing, setOptimizing] = useState(false);
   const [optimization, setOptimization] = useState(null);
   const [optimizeError, setOptimizeError] = useState("");
+  const [objective, setObjective] = useState("mean_variance");
+  const [useForecasts, setUseForecasts] = useState(false);
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -129,7 +138,10 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
     setOptimizeError("");
     setOptimization(null);
     try {
-      const { data } = await portfolioAPI.optimize(id, {});
+      const { data } = await portfolioAPI.optimize(id, {
+        objective,
+        use_forecasts: useForecasts,
+      });
       if (data.success) setOptimization(data.optimization);
       else setOptimizeError(data.error || "Optimization failed");
     } catch (err) {
@@ -348,6 +360,28 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
                   Run
                 </Button>
               </View>
+              <View style={styles.objectiveRow}>
+                {OBJECTIVES.map((o) => (
+                  <Chip
+                    key={o.value}
+                    compact
+                    selected={objective === o.value}
+                    disabled={optimizing}
+                    onPress={() => setObjective(o.value)}
+                  >
+                    {o.label}
+                  </Chip>
+                ))}
+                <Chip
+                  compact
+                  icon="chart-line"
+                  selected={useForecasts}
+                  disabled={optimizing}
+                  onPress={() => setUseForecasts((v) => !v)}
+                >
+                  ML forecasts
+                </Chip>
+              </View>
               {!!optimizeError && (
                 <Text style={{ color: theme.colors.error }}>
                   {optimizeError}
@@ -361,6 +395,18 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
                     Volatility {formatNumber(optimization.volatility)}% · Sharpe{" "}
                     {formatNumber(optimization.sharpe_ratio)}
                   </Text>
+                  {!!optimization.risk && (
+                    <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                      1-day VaR 95%{" "}
+                      {formatNumber(optimization.risk.var_95 * 100)}% · Max
+                      drawdown {formatNumber(optimization.risk.max_drawdown * 100)}%
+                    </Text>
+                  )}
+                  {!!optimization.note && (
+                    <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                      {optimization.note}
+                    </Text>
+                  )}
                   {optimization.recommendations.map((r) => (
                     <View key={r.symbol} style={styles.optRow}>
                       <Text
@@ -521,6 +567,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
+  },
+  objectiveRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
   },
   optRow: {
     flexDirection: "row",
