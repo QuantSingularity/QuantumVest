@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
-
 from ai_models.data.features import next_return_target, normalize_ohlcv
 from ai_models.evaluation.metrics import performance_metrics, score_predictions
 from ai_models.exceptions import OptimizationError

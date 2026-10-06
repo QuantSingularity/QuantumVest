@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from ai_models.evaluation.metrics import score_predictions
 from ai_models.exceptions import DataError, NotTrainedError
 from ai_models.models.predictor import TimeSeriesPredictor

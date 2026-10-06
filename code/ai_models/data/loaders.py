@@ -2,7 +2,6 @@ import os
 from typing import Optional
 
 import pandas as pd
-
 from ai_models.data.features import normalize_ohlcv
 from ai_models.exceptions import DataError
 
@@ -37,9 +36,7 @@ def fetch_ohlcv(
     return normalize_ohlcv(hist)
 
 
-def load_price_matrix(
-    path: str, date_column: Optional[str] = None
-) -> pd.DataFrame:
+def load_price_matrix(path: str, date_column: Optional[str] = None) -> pd.DataFrame:
     if not os.path.isfile(path):
         raise DataError(f"Data file not found: {path}")
     df = pd.read_csv(path)

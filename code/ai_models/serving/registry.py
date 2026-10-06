@@ -52,7 +52,9 @@ class ModelStore:
         return os.path.join(directory, "meta.json")
 
     def exists(self, asset_type: str, symbol: str, model_type: str) -> bool:
-        return os.path.isfile(self._meta_path(self.path(asset_type, symbol, model_type)))
+        return os.path.isfile(
+            self._meta_path(self.path(asset_type, symbol, model_type))
+        )
 
     def metadata(
         self, asset_type: str, symbol: str, model_type: str

@@ -399,7 +399,8 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
                     <Text style={{ color: theme.colors.onSurfaceVariant }}>
                       1-day VaR 95%{" "}
                       {formatNumber(optimization.risk.var_95 * 100)}% · Max
-                      drawdown {formatNumber(optimization.risk.max_drawdown * 100)}%
+                      drawdown{" "}
+                      {formatNumber(optimization.risk.max_drawdown * 100)}%
                     </Text>
                   )}
                   {!!optimization.note && (

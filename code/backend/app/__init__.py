@@ -29,7 +29,9 @@ def create_app(config_name: str = None) -> Flask:
     if not (app.config.get("DEBUG") or app.config.get("TESTING")) and app.config[
         "SECRET_KEY"
     ].startswith(("dev-secret", "change-me")):
-        logger.warning("SECRET_KEY is a placeholder value; set a strong secret in production")
+        logger.warning(
+            "SECRET_KEY is a placeholder value; set a strong secret in production"
+        )
 
     # Initialise extensions
     from app.extensions import cache, cors, db, migrate
@@ -40,9 +42,8 @@ def create_app(config_name: str = None) -> Flask:
     cors.init_app(app, origins=app.config.get("CORS_ORIGINS", ["*"]))
 
     # Register blueprints
-    from app.api.v1.routes import api_bp
-
     from app.api.v1.ai_routes import ai_bp
+    from app.api.v1.routes import api_bp
 
     app.register_blueprint(api_bp)
     app.register_blueprint(ai_bp)

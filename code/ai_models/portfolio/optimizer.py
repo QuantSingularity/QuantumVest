@@ -3,10 +3,9 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+from ai_models.exceptions import OptimizationError
 from scipy.optimize import minimize
 from sklearn.covariance import LedoitWolf
-
-from ai_models.exceptions import OptimizationError
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,9 @@ class PortfolioOptimizer:
         df = df.replace([np.inf, -np.inf], np.nan)
         df = df.dropna(axis=1, how="all").dropna(axis=0, how="any")
         if df.shape[1] < 2:
-            raise OptimizationError("At least two assets with return history are required")
+            raise OptimizationError(
+                "At least two assets with return history are required"
+            )
         if df.shape[0] < MIN_OBSERVATIONS:
             raise OptimizationError(
                 f"At least {MIN_OBSERVATIONS} overlapping observations are required"
@@ -202,7 +203,9 @@ class PortfolioOptimizer:
         if lo < 0 or hi > 1 or lo > hi:
             raise OptimizationError("Weight bounds must satisfy 0 <= min <= max <= 1")
         if n * lo > 1 + 1e-9 or n * hi < 1 - 1e-9:
-            raise OptimizationError("Weight bounds are infeasible for the number of assets")
+            raise OptimizationError(
+                "Weight bounds are infeasible for the number of assets"
+            )
 
         def variance(w):
             return float(w @ cov @ w)
@@ -214,19 +217,24 @@ class PortfolioOptimizer:
         if objective == "min_variance":
             fun = variance
         elif objective == "max_return":
+
             def fun(w):
                 return -float(w @ mu)
+
         elif objective == "mean_variance":
             lam = float(risk_aversion)
 
             def fun(w):
                 return -(float(w @ mu) - 0.5 * lam * variance(w))
+
         elif objective == "risk_parity":
+
             def fun(w):
                 marginal = cov @ w
                 contrib = w * marginal
                 total = float(w @ marginal)
                 return float(np.sum((contrib - total / n) ** 2)) * 1e4
+
         elif objective == "target_return":
             if target_return is None:
                 raise OptimizationError("target_return is required for this objective")
@@ -246,6 +254,7 @@ class PortfolioOptimizer:
                 note = "No asset exceeds the risk-free rate; minimum variance used"
                 fun = variance
             else:
+
                 def fun(w):
                     vol = np.sqrt(max(variance(w), 1e-18))
                     return -(float(w @ mu) - self.risk_free_rate) / vol
@@ -256,9 +265,7 @@ class PortfolioOptimizer:
             "success": True,
             "objective": objective,
             "effective_objective": effective,
-            "weights": {
-                str(sym): float(w) for sym, w in zip(df.columns, weights)
-            },
+            "weights": {str(sym): float(w) for sym, w in zip(df.columns, weights)},
             "risk_free_rate": self.risk_free_rate,
             "effective_number_of_assets": float(1.0 / np.sum(weights**2)),
             "observations": int(len(df)),

@@ -48,7 +48,9 @@ class DataStorage:
         try:
             df = pd.read_csv(path)
             if "timestamp" in df.columns:
-                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True).dt.tz_localize(None)
+                df["timestamp"] = pd.to_datetime(
+                    df["timestamp"], utc=True
+                ).dt.tz_localize(None)
             return df
         except Exception as exc:
             logger.error("Error loading %s %s: %s", label, symbol, exc)
@@ -69,6 +71,8 @@ class DataStorage:
     def age_seconds(self, asset_type: str, symbol: str) -> Optional[float]:
         directory = self._crypto_dir if asset_type == "crypto" else self._stock_dir
         try:
-            return max(0.0, time.time() - os.path.getmtime(self._path(directory, symbol)))
+            return max(
+                0.0, time.time() - os.path.getmtime(self._path(directory, symbol))
+            )
         except (OSError, ValueError):
             return None

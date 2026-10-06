@@ -3,7 +3,6 @@ from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
-
 from ai_models.data.features import FEATURE_COLUMNS, normalize_ohlcv, supervised_frame
 
 logger = logging.getLogger(__name__)

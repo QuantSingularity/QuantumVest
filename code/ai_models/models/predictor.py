@@ -9,8 +9,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import RobustScaler
-
 from ai_models.data.features import (
     FEATURE_COLUMNS,
     MIN_ROWS,
@@ -19,11 +17,7 @@ from ai_models.data.features import (
     supervised_frame,
 )
 from ai_models.evaluation.metrics import score_predictions
-from ai_models.exceptions import (
-    DataError,
-    ModelCompatibilityError,
-    NotTrainedError,
-)
+from ai_models.exceptions import DataError, ModelCompatibilityError, NotTrainedError
 from ai_models.models.constants import (
     DEEP_MODELS,
     ENSEMBLE,
@@ -32,12 +26,9 @@ from ai_models.models.constants import (
     MODEL_FORMAT_VERSION,
     MODEL_TYPES,
 )
-from ai_models.models.deep import (
-    build_lstm,
-    build_transformer,
-    import_tensorflow,
-)
+from ai_models.models.deep import build_lstm, build_transformer, import_tensorflow
 from ai_models.models.tree import build_tree_model, ensemble_components
+from sklearn.preprocessing import RobustScaler
 
 logger = logging.getLogger(__name__)
 

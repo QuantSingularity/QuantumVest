@@ -2,8 +2,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from flask import current_app
-
 from ai_models import (
     DataError,
     InvalidSymbolError,
@@ -18,6 +16,7 @@ from ai_models import (
     normalize_ohlcv,
     risk_tolerance_to_aversion,
 )
+from flask import current_app
 from pipeline.crypto_api import CryptoDataFetcher
 from pipeline.data_storage import DataStorage
 from pipeline.stock_api import StockDataFetcher
@@ -79,7 +78,9 @@ class AIService:
             forecast_weight=cfg.get("AI_FORECAST_WEIGHT", 0.3),
         )
 
-    def _load_market_data(self, symbol: str, asset_type: str, refresh: bool) -> pd.DataFrame:
+    def _load_market_data(
+        self, symbol: str, asset_type: str, refresh: bool
+    ) -> pd.DataFrame:
         crypto = asset_type == "crypto"
         load = self.storage.load_crypto_data if crypto else self.storage.load_stock_data
         save = self.storage.save_crypto_data if crypto else self.storage.save_stock_data
@@ -172,7 +173,9 @@ class AIService:
                 auto_train=self.auto_train,
             )
             forecast_used = [s for s in forecast.index if pd.notna(forecast[s])]
-            weight = self.forecast_weight if forecast_weight is None else forecast_weight
+            weight = (
+                self.forecast_weight if forecast_weight is None else forecast_weight
+            )
             expected = blend_expected_returns(historical, forecast, weight)
         result = optimizer.optimize(
             returns,
@@ -196,9 +199,7 @@ class AIService:
         if current_values:
             total = float(sum(current_values.values()))
             if total > 0:
-                alloc = discrete_allocation(
-                    weights, prices.iloc[-1].to_dict(), total
-                )
+                alloc = discrete_allocation(weights, prices.iloc[-1].to_dict(), total)
                 result["discrete_allocation"] = alloc
         return result
 
@@ -242,4 +243,3 @@ def get_ai_service() -> AIService:
         service = AIService.from_app(app)
         app.extensions[_EXTENSION_KEY] = service
     return service
-

@@ -53,9 +53,7 @@ class AuthService:
     @staticmethod
     def verify_token(token: str) -> Optional[str]:
         try:
-            payload = jwt.decode(
-                token, _signing_key(), algorithms=["HS256"]
-            )
+            payload = jwt.decode(token, _signing_key(), algorithms=["HS256"])
             return payload["user_id"]
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             return None
@@ -179,9 +177,7 @@ class AuthService:
     @staticmethod
     def refresh_access_token(refresh_token: str) -> Dict[str, Any]:
         try:
-            payload = jwt.decode(
-                refresh_token, _signing_key(), algorithms=["HS256"]
-            )
+            payload = jwt.decode(refresh_token, _signing_key(), algorithms=["HS256"])
             if payload.get("type") != "refresh":
                 return {"success": False, "error": "Invalid token type"}
             user_id = payload["user_id"]
@@ -259,9 +255,7 @@ class AuthService:
     @staticmethod
     def reset_password(reset_token: str, new_password: str) -> Dict[str, Any]:
         try:
-            payload = jwt.decode(
-                reset_token, _signing_key(), algorithms=["HS256"]
-            )
+            payload = jwt.decode(reset_token, _signing_key(), algorithms=["HS256"])
             if payload.get("type") != "reset":
                 return {"success": False, "error": "Invalid or expired reset token"}
 

@@ -188,7 +188,10 @@ class PortfolioService:
             if qty <= 0:
                 return {"success": False, "error": "Quantity must be positive"}
             if px < 0 or fee < 0:
-                return {"success": False, "error": "Price and fees must not be negative"}
+                return {
+                    "success": False,
+                    "error": "Price and fees must not be negative",
+                }
             total_amount = qty * px + fee
 
             transaction = Transaction(
@@ -445,7 +448,9 @@ class PortfolioService:
                 }
 
             if objective is None:
-                objective = "target_return" if target_return is not None else "mean_variance"
+                objective = (
+                    "target_return" if target_return is not None else "mean_variance"
+                )
             if target_return is not None and objective != "target_return":
                 objective = "target_return"
             risk_tolerance = float(0.5 if risk_tolerance is None else risk_tolerance)
@@ -465,7 +470,9 @@ class PortfolioService:
             total_value = sum(values.values())
             recs = []
             for symbol, optimal in result["weights"].items():
-                current = values.get(symbol, 0.0) / total_value if total_value > 0 else 0.0
+                current = (
+                    values.get(symbol, 0.0) / total_value if total_value > 0 else 0.0
+                )
                 diff = optimal - current
                 recs.append(
                     {
@@ -473,7 +480,9 @@ class PortfolioService:
                         "current_weight": round(current, 4),
                         "optimal_weight": round(optimal, 4),
                         "recommendation": (
-                            "buy" if diff > 0.05 else ("sell" if diff < -0.05 else "hold")
+                            "buy"
+                            if diff > 0.05
+                            else ("sell" if diff < -0.05 else "hold")
                         ),
                     }
                 )

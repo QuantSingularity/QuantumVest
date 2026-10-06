@@ -5,7 +5,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-
 from ai_models.data.features import MIN_ROWS, normalize_ohlcv
 from ai_models.exceptions import DataError, PredictionError
 from ai_models.models.constants import (

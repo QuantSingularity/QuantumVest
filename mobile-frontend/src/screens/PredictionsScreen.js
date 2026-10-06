@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Appbar, Chip, Text, useTheme } from "react-native-paper";
+import {
+  ActivityIndicator,
+  Appbar,
+  Chip,
+  Text,
+  useTheme,
+} from "react-native-paper";
 import AssetSearchInput from "../components/AssetSearchInput";
 import ForecastLineChart from "../components/ForecastLineChart";
 import StatCard from "../components/StatCard";
@@ -55,10 +61,16 @@ const PredictionsScreen = () => {
 
   const metrics = result?.model?.metrics || {};
   const tone =
-    result?.expected_return > 0 ? "up" : result?.expected_return < 0 ? "down" : undefined;
+    result?.expected_return > 0
+      ? "up"
+      : result?.expected_return < 0
+        ? "down"
+        : undefined;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <Appbar.Header>
         <Appbar.Content title="AI Predictions" subtitle="Market forecasting" />
       </Appbar.Header>
@@ -93,12 +105,18 @@ const PredictionsScreen = () => {
 
           {!asset && !loading && (
             <View style={styles.emptyState}>
-              <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+              <Text
+                variant="titleMedium"
+                style={{ color: theme.colors.onSurface }}
+              >
                 Select an asset
               </Text>
               <Text
                 variant="bodyMedium"
-                style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}
+                style={[
+                  styles.emptyText,
+                  { color: theme.colors.onSurfaceVariant },
+                ]}
               >
                 Pick a stock or crypto asset to generate a forecast. The first
                 request for an asset trains a model, which can take a few
@@ -117,7 +135,9 @@ const PredictionsScreen = () => {
           )}
 
           {!!error && !loading && (
-            <Text style={{ color: theme.colors.error, marginTop: 12 }}>{error}</Text>
+            <Text style={{ color: theme.colors.error, marginTop: 12 }}>
+              {error}
+            </Text>
           )}
         </View>
 
@@ -178,18 +198,29 @@ const PredictionsScreen = () => {
               />
               {result.forecast.map((row) => (
                 <View key={row.date} style={styles.row}>
-                  <Text style={{ color: theme.colors.onSurfaceVariant }}>{row.date}</Text>
-                  <Text style={{ color: theme.colors.onSurface, fontWeight: "600" }}>
+                  <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                    {row.date}
+                  </Text>
+                  <Text
+                    style={{ color: theme.colors.onSurface, fontWeight: "600" }}
+                  >
                     {formatCurrency(row.predicted_price)}
                   </Text>
-                  <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
+                  <Text
+                    style={{
+                      color: theme.colors.onSurfaceVariant,
+                      fontSize: 12,
+                    }}
+                  >
                     {formatCurrency(row.lower)} to {formatCurrency(row.upper)}
                   </Text>
                 </View>
               ))}
             </View>
 
-            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
+            <Text
+              style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}
+            >
               Forecasts are statistical estimates, not financial advice.
             </Text>
           </>

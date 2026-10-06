@@ -6,7 +6,12 @@ import { brand } from "../theme/tokens";
 
 const screenWidth = Dimensions.get("window").width;
 
-const ForecastLineChart = ({ lastDate, lastPrice, forecast = [], height = 220 }) => {
+const ForecastLineChart = ({
+  lastDate,
+  lastPrice,
+  forecast = [],
+  height = 220,
+}) => {
   const theme = useTheme();
 
   if (!forecast.length) return null;

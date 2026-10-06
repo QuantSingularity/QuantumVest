@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from ai_models.risk import RiskAssessmentModel
 
 
@@ -9,7 +8,9 @@ def model():
     return RiskAssessmentModel()
 
 
-@pytest.mark.parametrize("method", ["historical", "parametric", "cornish_fisher", "bootstrap"])
+@pytest.mark.parametrize(
+    "method", ["historical", "parametric", "cornish_fisher", "bootstrap"]
+)
 def test_var_is_negative_loss(model, returns, method):
     assert model.value_at_risk(returns["A"], 0.05, method) < 0
 
@@ -58,7 +59,13 @@ def test_stress_test_applies_shocks(model, returns):
     result = model.stress_test(
         weights,
         returns,
-        {"crash": {"default_shock": -0.2, "shocks": {"A": -0.4}, "volatility_multiplier": 2.0}},
+        {
+            "crash": {
+                "default_shock": -0.2,
+                "shocks": {"A": -0.4},
+                "volatility_multiplier": 2.0,
+            }
+        },
     )
     assert result["crash"]["portfolio_shock"] == pytest.approx(-0.25 * 0.4 - 0.75 * 0.2)
     base = model.value_at_risk(model.portfolio_returns(returns, weights), 0.05)

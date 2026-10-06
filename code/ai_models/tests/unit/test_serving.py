@@ -1,7 +1,6 @@
 import threading
 
 import pytest
-
 from ai_models.exceptions import DataError, InvalidSymbolError, PredictionError
 from ai_models.serving.engine import PredictionEngine
 from ai_models.serving.registry import (
@@ -12,7 +11,9 @@ from ai_models.serving.registry import (
 from ai_models.tests.helpers import make_ohlcv
 
 
-@pytest.mark.parametrize("bad", ["", "../etc", "A/B", "A B", "..", "A..B", "X" * 30, None])
+@pytest.mark.parametrize(
+    "bad", ["", "../etc", "A/B", "A B", "..", "A..B", "X" * 30, None]
+)
 def test_bad_symbols_rejected(bad):
     with pytest.raises(InvalidSymbolError):
         normalize_symbol(bad)
@@ -38,7 +39,9 @@ def make_engine(tmp_path, frames=None, calls=None):
             raise DataError("no data")
         return frames[symbol]
 
-    return PredictionEngine(ModelStore(str(tmp_path)), provider, default_model="xgboost")
+    return PredictionEngine(
+        ModelStore(str(tmp_path)), provider, default_model="xgboost"
+    )
 
 
 def test_predict_trains_once_then_reuses(tmp_path):
@@ -96,7 +99,9 @@ def test_crypto_forecast_includes_weekends(tmp_path):
 
 
 def test_list_models_filters(tmp_path):
-    engine = make_engine(tmp_path, {"AAPL": make_ohlcv(400), "MSFT": make_ohlcv(400, seed=2)})
+    engine = make_engine(
+        tmp_path, {"AAPL": make_ohlcv(400), "MSFT": make_ohlcv(400, seed=2)}
+    )
     engine.predict("AAPL")
     engine.predict("MSFT")
     assert {m["symbol"] for m in engine.models()} == {"AAPL", "MSFT"}
@@ -121,5 +126,7 @@ def test_concurrent_requests_train_once(tmp_path):
 
 def test_forecast_returns_series_marks_unskilled_models(tmp_path):
     engine = make_engine(tmp_path, {"AAPL": make_ohlcv(400)})
-    out = engine.annualized_forecast_returns({"AAPL": "stock", "NOPE": "stock"}, horizon=5)
+    out = engine.annualized_forecast_returns(
+        {"AAPL": "stock", "NOPE": "stock"}, horizon=5
+    )
     assert out["NOPE"] != out["NOPE"]

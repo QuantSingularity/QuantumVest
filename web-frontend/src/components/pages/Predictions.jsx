@@ -79,7 +79,11 @@ const Predictions = () => {
               placeholder="Search an asset to forecast"
             />
           </div>
-          <div className="predictions-horizons" role="group" aria-label="Horizon">
+          <div
+            className="predictions-horizons"
+            role="group"
+            aria-label="Horizon"
+          >
             {HORIZONS.map((h) => (
               <button
                 key={h}
@@ -99,8 +103,7 @@ const Predictions = () => {
             <h4>Select an asset</h4>
             <p>
               Pick a stock or crypto asset to generate a forecast. The first
-              request for an asset trains a model, which can take a few
-              seconds.
+              request for an asset trains a model, which can take a few seconds.
             </p>
           </div>
         )}
@@ -173,11 +176,16 @@ const Predictions = () => {
                   {result.forecast.map((row) => (
                     <tr key={row.date}>
                       <td>{row.date}</td>
-                      <td className="mono">{formatCurrency(row.predicted_price)}</td>
                       <td className="mono">
-                        {formatCurrency(row.lower)} to {formatCurrency(row.upper)}
+                        {formatCurrency(row.predicted_price)}
                       </td>
-                      <td className={`mono ${trendClass(row.cumulative_return)}`}>
+                      <td className="mono">
+                        {formatCurrency(row.lower)} to{" "}
+                        {formatCurrency(row.upper)}
+                      </td>
+                      <td
+                        className={`mono ${trendClass(row.cumulative_return)}`}
+                      >
                         {formatSignedPercent(row.cumulative_return * 100)}
                       </td>
                     </tr>
@@ -191,8 +199,9 @@ const Predictions = () => {
               {result.model.components?.length > 1
                 ? ` (${result.model.components.join(", ")})`
                 : ""}
-              , skill vs naive {formatNumber((metrics.skill_vs_naive ?? 0) * 100, 1)}%.
-              Forecasts are statistical estimates, not financial advice.
+              , skill vs naive{" "}
+              {formatNumber((metrics.skill_vs_naive ?? 0) * 100, 1)}%. Forecasts
+              are statistical estimates, not financial advice.
             </p>
           </div>
         )}

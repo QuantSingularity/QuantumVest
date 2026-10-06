@@ -2,7 +2,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-
 from ai_models.exceptions import DataError
 
 OHLCV = ("open", "high", "low", "close", "volume")
@@ -165,7 +164,9 @@ def build_features(frame: pd.DataFrame) -> pd.DataFrame:
         has_volume, 0.0
     )
     out["volume_change"] = (
-        np.log((volume + 1.0) / (volume.shift(1) + 1.0)).clip(-3, 3).where(has_volume, 0.0)
+        np.log((volume + 1.0) / (volume.shift(1) + 1.0))
+        .clip(-3, 3)
+        .where(has_volume, 0.0)
     )
 
     dow = frame.index.dayofweek.to_numpy()

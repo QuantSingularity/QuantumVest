@@ -164,10 +164,7 @@ class RiskAssessmentModel:
             if multiplier <= 0:
                 raise ValueError("volatility_multiplier must be positive")
             instant = float(
-                sum(
-                    w[c] * float(shocks.get(c, default))
-                    for c in returns.columns
-                )
+                sum(w[c] * float(shocks.get(c, default)) for c in returns.columns)
             )
             stressed = base_mu + (base - base_mu) * multiplier
             results[str(name)] = {

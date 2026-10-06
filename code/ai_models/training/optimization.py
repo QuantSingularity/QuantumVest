@@ -11,7 +11,6 @@ if __package__ in (None, ""):
     )
 
 import pandas as pd
-
 from ai_models.data.loaders import default_model_dir, fetch_ohlcv, load_price_matrix
 from ai_models.evaluation.backtest import walk_forward_portfolio
 from ai_models.portfolio.allocation import discrete_allocation
@@ -25,7 +24,9 @@ from ai_models.portfolio.optimizer import (
 logger = logging.getLogger(__name__)
 
 
-def load_prices(data_path: Optional[str], symbols: Optional[List[str]], period: str) -> pd.DataFrame:
+def load_prices(
+    data_path: Optional[str], symbols: Optional[List[str]], period: str
+) -> pd.DataFrame:
     if data_path:
         return load_price_matrix(data_path)
     if not symbols or len(symbols) < 2:
@@ -77,15 +78,21 @@ def train_optimization_model(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Compute QuantumVest portfolio weights")
+    parser = argparse.ArgumentParser(
+        description="Compute QuantumVest portfolio weights"
+    )
     parser.add_argument("--data-path")
-    parser.add_argument("--symbols", type=lambda v: [s.strip() for s in v.split(",") if s.strip()])
+    parser.add_argument(
+        "--symbols", type=lambda v: [s.strip() for s in v.split(",") if s.strip()]
+    )
     parser.add_argument("--period", default="5y")
     parser.add_argument("--objective", choices=OBJECTIVES, default="max_sharpe")
     parser.add_argument("--min-weight", type=float, default=0.0)
     parser.add_argument("--max-weight", type=float, default=1.0)
     parser.add_argument("--return-method", choices=RETURN_METHODS, default="shrunk")
-    parser.add_argument("--covariance-method", choices=COVARIANCE_METHODS, default="ledoit_wolf")
+    parser.add_argument(
+        "--covariance-method", choices=COVARIANCE_METHODS, default="ledoit_wolf"
+    )
     parser.add_argument("--risk-free-rate", type=float, default=0.02)
     parser.add_argument("--target-return", type=float)
     parser.add_argument("--risk-aversion", type=float, default=5.0)
@@ -115,7 +122,9 @@ def main(argv: Optional[list] = None) -> int:
         target_return=args.target_return,
         risk_aversion=args.risk_aversion,
     )
-    output = args.output or os.path.join(default_model_dir(), "optimization_weights.json")
+    output = args.output or os.path.join(
+        default_model_dir(), "optimization_weights.json"
+    )
     os.makedirs(os.path.dirname(os.path.abspath(output)), exist_ok=True)
     with open(output, "w") as fh:
         json.dump(result, fh, indent=2)

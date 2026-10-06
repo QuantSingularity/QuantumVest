@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-
 from ai_models.evaluation.backtest import walk_forward_portfolio
 from ai_models.exceptions import OptimizationError
 from ai_models.portfolio import (
@@ -117,7 +116,13 @@ def test_blend_uses_forecast_where_available():
 
 def test_discrete_allocation_never_exceeds_budget():
     result = discrete_allocation({"A": 0.5, "B": 0.5}, {"A": 33.3, "B": 120.0}, 10000)
-    spent = sum(n * p for n, p in ((result["allocation"]["A"], 33.3), (result["allocation"]["B"], 120.0)))
+    spent = sum(
+        n * p
+        for n, p in (
+            (result["allocation"]["A"], 33.3),
+            (result["allocation"]["B"], 120.0),
+        )
+    )
     assert spent + result["leftover"] == pytest.approx(10000)
     assert result["leftover"] >= 0
 

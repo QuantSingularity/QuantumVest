@@ -3,7 +3,6 @@ import os
 
 import pandas as pd
 import pytest
-
 from ai_models.data.preprocessing import (
     build_return_matrix,
     build_supervised_dataset,
@@ -59,10 +58,14 @@ def test_prediction_cli_saves_loadable_model(csv_dir, tmp_path):
     out = tmp_path / "models"
     code = prediction.main(
         [
-            "--symbol", "AAPL",
-            "--data-path", str(csv_dir / "aapl.csv"),
-            "--model-type", "xgboost",
-            "--output-dir", str(out),
+            "--symbol",
+            "AAPL",
+            "--data-path",
+            str(csv_dir / "aapl.csv"),
+            "--model-type",
+            "xgboost",
+            "--output-dir",
+            str(out),
         ]
     )
     assert code == 0
@@ -71,14 +74,25 @@ def test_prediction_cli_saves_loadable_model(csv_dir, tmp_path):
 
 def test_optimization_cli_writes_weights(csv_dir, tmp_path):
     prices = pd.concat(
-        [make_ohlcv(450, seed=i).set_index("timestamp")["close"].rename(n) for i, n in enumerate(("A", "B", "C"))],
+        [
+            make_ohlcv(450, seed=i).set_index("timestamp")["close"].rename(n)
+            for i, n in enumerate(("A", "B", "C"))
+        ],
         axis=1,
     )
     path = tmp_path / "prices.csv"
     prices.to_csv(path)
     out = tmp_path / "weights.json"
     code = optimization.main(
-        ["--data-path", str(path), "--objective", "min_variance", "--output", str(out), "--evaluate"]
+        [
+            "--data-path",
+            str(path),
+            "--objective",
+            "min_variance",
+            "--output",
+            str(out),
+            "--evaluate",
+        ]
     )
     assert code == 0
     result = json.loads(out.read_text())
@@ -90,10 +104,16 @@ def test_pipeline_end_to_end(csv_dir, tmp_path):
     out = tmp_path / "models"
     code = pipeline.main(
         [
-            "--symbols", "AAPL", "MSFT", "BTC:crypto",
-            "--data-dir", str(csv_dir),
-            "--model-types", "xgboost",
-            "--output-dir", str(out),
+            "--symbols",
+            "AAPL",
+            "MSFT",
+            "BTC:crypto",
+            "--data-dir",
+            str(csv_dir),
+            "--model-types",
+            "xgboost",
+            "--output-dir",
+            str(out),
         ]
     )
     assert code == 0

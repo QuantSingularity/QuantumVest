@@ -2,7 +2,12 @@ import React, { useMemo } from "react";
 import "chart.js/auto";
 import { Line } from "react-chartjs-2";
 
-const ForecastChart = ({ lastDate, lastPrice, forecast = [], height = 280 }) => {
+const ForecastChart = ({
+  lastDate,
+  lastPrice,
+  forecast = [],
+  height = 280,
+}) => {
   const isDark =
     document.documentElement.getAttribute("data-theme") !== "light";
 

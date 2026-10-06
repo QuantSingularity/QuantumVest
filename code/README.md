@@ -165,13 +165,13 @@ quantumvest/
 The backend imports `ai_models` directly (`backend/app/services/ai.py`), and the
 Docker image bundles both directories, so the build context is this folder.
 
-| Endpoint                                | Access        | Description                                                         |
-| --------------------------------------- | ------------- | ------------------------------------------------------------------- |
-| `GET /api/v1/predictions/<symbol>`      | Authenticated | Forecast with 95% bands. Query: `days` (1-30), `asset_type`, `model` |
-| `GET /api/v1/predictions/models`        | Authenticated | Trained models with held-out metrics                                |
-| `POST /api/v1/predictions/<symbol>/train` | Admin       | Force a retrain (`model_type`, `epochs`)                            |
-| `POST /api/v1/portfolios/<id>/optimize` | Manager/Admin | `objective`, `target_return`, `max_weight`, `use_forecasts`         |
-| `GET /api/v1/portfolios/<id>/risk`      | Authenticated | VaR, expected shortfall, stress tests, risk contributions           |
+| Endpoint                                  | Access        | Description                                                          |
+| ----------------------------------------- | ------------- | -------------------------------------------------------------------- |
+| `GET /api/v1/predictions/<symbol>`        | Authenticated | Forecast with 95% bands. Query: `days` (1-30), `asset_type`, `model` |
+| `GET /api/v1/predictions/models`          | Authenticated | Trained models with held-out metrics                                 |
+| `POST /api/v1/predictions/<symbol>/train` | Admin         | Force a retrain (`model_type`, `epochs`)                             |
+| `POST /api/v1/portfolios/<id>/optimize`   | Manager/Admin | `objective`, `target_return`, `max_weight`, `use_forecasts`          |
+| `GET /api/v1/portfolios/<id>/risk`        | Authenticated | VaR, expected shortfall, stress tests, risk contributions            |
 
 Tree models (XGBoost, LightGBM, random forest, CatBoost when installed) train on
 first request and retrain when older than `AI_MODEL_MAX_AGE_DAYS`. LSTM and

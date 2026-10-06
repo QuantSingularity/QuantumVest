@@ -107,7 +107,12 @@ def train_prediction_model(current_user: Any, symbol: str) -> Tuple[Response, in
         asset_type = _resolve_asset_type(symbol, data.get("asset_type"))
         epochs = int(data.get("epochs", 60))
         if not 1 <= epochs <= 500:
-            return jsonify({"success": False, "error": "epochs must be between 1 and 500"}), 400
+            return (
+                jsonify(
+                    {"success": False, "error": "epochs must be between 1 and 500"}
+                ),
+                400,
+            )
         result = get_ai_service().train(
             symbol, asset_type, data.get("model_type"), epochs
         )

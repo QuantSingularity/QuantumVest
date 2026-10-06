@@ -12,7 +12,6 @@ if __package__ in (None, ""):
     )
 
 import pandas as pd
-
 from ai_models.data.loaders import default_model_dir, fetch_ohlcv, load_ohlcv_csv
 from ai_models.data.preprocessing import (
     build_return_matrix,
@@ -66,7 +65,9 @@ class ModelTrainer:
                         "holdout_metrics": holdout,
                     }
                 except Exception as exc:
-                    logger.error("Training %s for %s failed: %s", model_type, symbol, exc)
+                    logger.error(
+                        "Training %s for %s failed: %s", model_type, symbol, exc
+                    )
                     per_model[model_type] = {"error": str(exc)}
             results[symbol] = per_model
         return results
@@ -76,7 +77,9 @@ class ModelTrainer:
         output: Dict[str, Any] = {"assets": list(returns.columns)}
         for objective in ("max_sharpe", "min_variance", "risk_parity"):
             try:
-                output[objective] = optimizer.optimize(returns, objective, max_weight=0.5)
+                output[objective] = optimizer.optimize(
+                    returns, objective, max_weight=0.5
+                )
             except ValueError as exc:
                 output[objective] = {"error": str(exc)}
         try:
@@ -131,11 +134,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    parser = argparse.ArgumentParser(description="QuantumVest end-to-end training pipeline")
+    parser = argparse.ArgumentParser(
+        description="QuantumVest end-to-end training pipeline"
+    )
     parser.add_argument("--symbols", nargs="*")
     parser.add_argument("--data-dir")
     parser.add_argument("--period", default="5y")
-    parser.add_argument("--model-types", nargs="*", choices=MODEL_TYPES, default=[ENSEMBLE])
+    parser.add_argument(
+        "--model-types", nargs="*", choices=MODEL_TYPES, default=[ENSEMBLE]
+    )
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--output-dir")
     args = parser.parse_args(argv)
@@ -151,7 +158,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     report: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "symbols": symbols,
-        "prediction": trainer.train_prediction_models(frames, symbols, args.model_types),
+        "prediction": trainer.train_prediction_models(
+            frames, symbols, args.model_types
+        ),
     }
     if len(frames) >= 2:
         returns = build_return_matrix(frames)
@@ -159,7 +168,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         report["risk"] = trainer.risk_report(returns)
 
     out = os.path.join(
-        store.base_dir, f"training_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        store.base_dir,
+        f"training_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
     )
     with open(out, "w") as fh:
         json.dump(report, fh, indent=2, default=str)

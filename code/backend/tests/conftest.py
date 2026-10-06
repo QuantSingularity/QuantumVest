@@ -140,7 +140,9 @@ def market_data(app, monkeypatch):
             raise DataError(f"No market data available for {symbol}")
         if symbol == "THIN":
             return synthetic_ohlcv(9, 60)
-        return synthetic_ohlcv(known[symbol], freq="D" if asset_type == "crypto" else "B")
+        return synthetic_ohlcv(
+            known[symbol], freq="D" if asset_type == "crypto" else "B"
+        )
 
     monkeypatch.setattr(AIService, "_load_market_data", provider)
     service = get_ai_service()

@@ -383,7 +383,9 @@ const PortfolioDetail = () => {
             <option value="min_variance">Minimum variance</option>
             <option value="risk_parity">Risk parity</option>
           </select>
-          <label style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          <label
+            style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}
+          >
             <input
               type="checkbox"
               checked={useForecasts}

@@ -14,7 +14,12 @@ def _resolve_dir(value: str) -> str:
 
 
 def _env_bool(name: str, default: bool) -> bool:
-    return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+    return os.environ.get(name, str(default)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def _engine_options(db_url: str) -> Dict[str, Any]:

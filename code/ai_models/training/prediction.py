@@ -53,7 +53,9 @@ def train_prediction_model(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Train a QuantumVest forecasting model")
+    parser = argparse.ArgumentParser(
+        description="Train a QuantumVest forecasting model"
+    )
     parser.add_argument("--symbol", "--asset", dest="symbol", required=True)
     parser.add_argument("--asset-type", choices=("stock", "crypto"), default="stock")
     parser.add_argument("--model-type", choices=MODEL_TYPES, default=ENSEMBLE)

@@ -50,7 +50,9 @@ def portfolio_with_asset(db, test_user):
         {"quantity": 1, "price": 10, "fees": -1},
     ],
 )
-def test_invalid_transaction_values_rejected(client, auth_headers, portfolio_with_asset, payload):
+def test_invalid_transaction_values_rejected(
+    client, auth_headers, portfolio_with_asset, payload
+):
     resp = client.post(
         f"/api/v1/portfolios/{portfolio_with_asset.id}/transactions",
         json={"asset_symbol": "AAPL", "transaction_type": "buy", **payload},
@@ -64,7 +66,12 @@ def test_failed_sell_leaves_no_transaction(client, auth_headers, portfolio_with_
 
     resp = client.post(
         f"/api/v1/portfolios/{portfolio_with_asset.id}/transactions",
-        json={"asset_symbol": "AAPL", "transaction_type": "sell", "quantity": 1, "price": 1},
+        json={
+            "asset_symbol": "AAPL",
+            "transaction_type": "sell",
+            "quantity": 1,
+            "price": 1,
+        },
         headers=auth_headers,
     )
     assert resp.status_code == 400

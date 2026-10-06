@@ -1,14 +1,13 @@
 import numpy as np
 import pandas as pd
 import pytest
-
-from ai_models.exceptions import DataError
 from ai_models.data.features import (
     FEATURE_COLUMNS,
     build_features,
     normalize_ohlcv,
     supervised_frame,
 )
+from ai_models.exceptions import DataError
 
 
 def test_normalize_accepts_mixed_case_and_timestamp_column(ohlcv):

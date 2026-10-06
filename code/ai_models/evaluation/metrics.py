@@ -31,7 +31,9 @@ def score_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, Any]:
         "rmse": rmse,
         "mae": float(np.mean(np.abs(err))),
         "baseline_rmse": baseline_rmse,
-        "skill_vs_naive": float(1 - rmse / baseline_rmse) if baseline_rmse > 0 else None,
+        "skill_vs_naive": (
+            float(1 - rmse / baseline_rmse) if baseline_rmse > 0 else None
+        ),
         "directional_accuracy": directional,
         "information_coefficient": ic,
         "price_mape_pct": float(np.mean(price_err) * 100),
@@ -40,7 +42,9 @@ def score_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, Any]:
 
 
 def performance_metrics(
-    returns: pd.Series, risk_free_rate: float = 0.02, periods_per_year: int = TRADING_DAYS
+    returns: pd.Series,
+    risk_free_rate: float = 0.02,
+    periods_per_year: int = TRADING_DAYS,
 ) -> Dict[str, float]:
     r = returns.dropna().to_numpy(dtype=float)
     if r.size < 2:

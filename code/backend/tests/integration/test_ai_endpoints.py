@@ -1,11 +1,6 @@
 import pytest
 from app.extensions import db as _db
-from app.models.financial import (
-    Asset,
-    AssetType,
-    Portfolio,
-    PortfolioHolding,
-)
+from app.models.financial import Asset, AssetType, Portfolio, PortfolioHolding
 
 
 @pytest.fixture
@@ -57,10 +52,16 @@ class TestPredictions:
         b = client.get("/api/v1/predictions/MSFT", headers=auth_headers).get_json()
         assert a["model"]["trained_at"] == b["model"]["trained_at"]
 
-    def test_crypto_type_inferred_from_asset_table(self, client, auth_headers, market_data):
-        _db.session.add(Asset(symbol="BTC", name="Bitcoin", asset_type=AssetType.CRYPTO))
+    def test_crypto_type_inferred_from_asset_table(
+        self, client, auth_headers, market_data
+    ):
+        _db.session.add(
+            Asset(symbol="BTC", name="Bitcoin", asset_type=AssetType.CRYPTO)
+        )
         _db.session.commit()
-        body = client.get("/api/v1/predictions/BTC?days=10", headers=auth_headers).get_json()
+        body = client.get(
+            "/api/v1/predictions/BTC?days=10", headers=auth_headers
+        ).get_json()
         assert body["asset_type"] == "crypto"
 
     def test_unknown_symbol_404(self, client, auth_headers, market_data):
@@ -69,7 +70,10 @@ class TestPredictions:
         assert resp.get_json()["code"] == "no_data"
 
     def test_invalid_symbol_400(self, client, auth_headers, market_data):
-        assert client.get("/api/v1/predictions/BAD$", headers=auth_headers).status_code == 400
+        assert (
+            client.get("/api/v1/predictions/BAD$", headers=auth_headers).status_code
+            == 400
+        )
 
     @pytest.mark.parametrize("days", ["0", "31", "abc"])
     def test_invalid_days_400(self, client, auth_headers, market_data, days):
@@ -77,17 +81,23 @@ class TestPredictions:
         assert resp.status_code == 400
 
     def test_invalid_asset_type_400(self, client, auth_headers, market_data):
-        resp = client.get("/api/v1/predictions/AAPL?asset_type=bond", headers=auth_headers)
+        resp = client.get(
+            "/api/v1/predictions/AAPL?asset_type=bond", headers=auth_headers
+        )
         assert resp.status_code == 400
 
     def test_list_models_after_prediction(self, client, auth_headers, market_data):
         client.get("/api/v1/predictions/AAPL", headers=auth_headers)
-        body = client.get("/api/v1/predictions/models?symbol=AAPL", headers=auth_headers).get_json()
+        body = client.get(
+            "/api/v1/predictions/models?symbol=AAPL", headers=auth_headers
+        ).get_json()
         assert body["success"] is True
         assert [m["symbol"] for m in body["models"]] == ["AAPL"]
 
     def test_train_requires_admin(self, client, auth_headers, market_data):
-        resp = client.post("/api/v1/predictions/AAPL/train", json={}, headers=auth_headers)
+        resp = client.post(
+            "/api/v1/predictions/AAPL/train", json={}, headers=auth_headers
+        )
         assert resp.status_code == 403
 
     def test_admin_can_train(self, client, admin_headers, market_data):
@@ -110,7 +120,10 @@ class TestPredictions:
     def test_ai_disabled(self, app, client, auth_headers, market_data):
         app.config["AI_ENABLED"] = False
         try:
-            assert client.get("/api/v1/predictions/AAPL", headers=auth_headers).status_code == 503
+            assert (
+                client.get("/api/v1/predictions/AAPL", headers=auth_headers).status_code
+                == 503
+            )
         finally:
             app.config["AI_ENABLED"] = True
 
@@ -120,7 +133,9 @@ class TestPredictions:
 
 
 class TestOptimization:
-    def test_optimize_returns_valid_allocation(self, client, manager_headers, seeded_portfolio):
+    def test_optimize_returns_valid_allocation(
+        self, client, manager_headers, seeded_portfolio
+    ):
         resp = client.post(
             f"/api/v1/portfolios/{seeded_portfolio.id}/optimize",
             json={"objective": "max_sharpe", "max_weight": 0.6},
@@ -137,7 +152,9 @@ class TestOptimization:
         current = sum(r["current_weight"] for r in opt["recommendations"])
         assert current == pytest.approx(1.0, abs=0.01)
 
-    def test_default_objective_uses_risk_tolerance(self, client, manager_headers, seeded_portfolio):
+    def test_default_objective_uses_risk_tolerance(
+        self, client, manager_headers, seeded_portfolio
+    ):
         resp = client.post(
             f"/api/v1/portfolios/{seeded_portfolio.id}/optimize",
             json={"risk_tolerance": 0.1},
@@ -174,17 +191,25 @@ class TestOptimization:
 
     def test_non_premium_forbidden(self, client, auth_headers, seeded_portfolio):
         resp = client.post(
-            f"/api/v1/portfolios/{seeded_portfolio.id}/optimize", json={}, headers=auth_headers
+            f"/api/v1/portfolios/{seeded_portfolio.id}/optimize",
+            json={},
+            headers=auth_headers,
         )
         assert resp.status_code == 403
 
-    def test_other_users_portfolio_not_found(self, client, admin_headers, seeded_portfolio):
+    def test_other_users_portfolio_not_found(
+        self, client, admin_headers, seeded_portfolio
+    ):
         resp = client.post(
-            f"/api/v1/portfolios/{seeded_portfolio.id}/optimize", json={}, headers=admin_headers
+            f"/api/v1/portfolios/{seeded_portfolio.id}/optimize",
+            json={},
+            headers=admin_headers,
         )
         assert resp.status_code == 404
 
-    def test_single_holding_rejected(self, client, manager_headers, manager_user, market_data):
+    def test_single_holding_rejected(
+        self, client, manager_headers, manager_user, market_data
+    ):
         portfolio = Portfolio(user_id=manager_user.id, name="Solo")
         asset = Asset(symbol="AAPL", name="AAPL", asset_type=AssetType.STOCK)
         _db.session.add_all([portfolio, asset])
@@ -196,7 +221,9 @@ class TestOptimization:
         )
         _db.session.commit()
         resp = client.post(
-            f"/api/v1/portfolios/{portfolio.id}/optimize", json={}, headers=manager_headers
+            f"/api/v1/portfolios/{portfolio.id}/optimize",
+            json={},
+            headers=manager_headers,
         )
         assert resp.status_code == 400
 
@@ -217,9 +244,13 @@ class TestPortfolioRisk:
         resp = client.get("/api/v1/portfolios/nope/risk", headers=manager_headers)
         assert resp.status_code == 404
 
-    def test_empty_portfolio_400(self, client, manager_headers, manager_user, market_data):
+    def test_empty_portfolio_400(
+        self, client, manager_headers, manager_user, market_data
+    ):
         portfolio = Portfolio(user_id=manager_user.id, name="Empty")
         _db.session.add(portfolio)
         _db.session.commit()
-        resp = client.get(f"/api/v1/portfolios/{portfolio.id}/risk", headers=manager_headers)
+        resp = client.get(
+            f"/api/v1/portfolios/{portfolio.id}/risk", headers=manager_headers
+        )
         assert resp.status_code == 400
