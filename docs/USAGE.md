@@ -657,7 +657,7 @@ print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
 
 - **API Reference**: See [API.md](API.md) for complete API documentation
 - **CLI Reference**: See [CLI.md](CLI.md) for all CLI commands
-- **Examples**: Explore [EXAMPLES/](EXAMPLES/) for more use cases
+- **Examples**: Explore [examples/](examples/portfolio-management.md) for more use cases
 - **Troubleshooting**: Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues
 
 ---

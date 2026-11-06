@@ -9,7 +9,7 @@ metadata:
     component: redis
     environment: "{{ .Values.environment }}"
 spec:
-  replicas: { { .Values.redis.replicas } }
+  replicas: {{ .Values.redis.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -48,7 +48,7 @@ spec:
                 - ALL
           ports:
             - name: redis
-              containerPort: { { .Values.redis.containerPort } }
+              containerPort: {{ .Values.redis.containerPort }}
               protocol: TCP
           resources:
             limits:

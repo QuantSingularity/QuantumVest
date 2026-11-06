@@ -17,15 +17,20 @@ Guidelines for contributing to the QuantumVest project including code style, tes
 
 1. Fork the repository
 2. Clone your fork:
+
    ```bash
    git clone https://github.com/quantsingularity/QuantumVest.git
    cd QuantumVest
    ```
+
 3. Add upstream remote:
+
    ```bash
    git remote add upstream https://github.com/quantsingularity/QuantumVest.git
    ```
+
 4. Create a feature branch:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -124,7 +129,7 @@ npm run lint
 
 Use conventional commit format:
 
-```
+```text
 type(scope): subject
 
 body (optional)
@@ -144,7 +149,7 @@ footer (optional)
 
 **Example:**
 
-```
+```text
 feat(api): add portfolio optimization endpoint
 
 Implement Modern Portfolio Theory optimization
@@ -252,7 +257,7 @@ npm test -- --watch
 
 Documentation resides in `/docs` directory:
 
-```
+```text
 docs/
 ├── README.md                 # Documentation index
 ├── INSTALLATION.md           # Installation guide
@@ -265,7 +270,7 @@ docs/
 ├── CONTRIBUTING.md           # This file
 ├── TROUBLESHOOTING.md        # Common issues
 ├── MIGRATIONS.md             # Migration guides
-└── EXAMPLES/                 # Code examples
+└── examples/                 # Code examples
     ├── portfolio-management.md
     ├── ai-prediction.md
     └── risk-analysis.md

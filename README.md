@@ -32,7 +32,7 @@ QuantumVest demonstrates an investment analytics workflow across a real, runnabl
 
 ## Project Structure
 
-```
+```text
 QuantumVest/
 ├── code/
 │   ├── backend/                 # Flask application
@@ -102,7 +102,7 @@ The app-level `code/docker-compose.yml` provisions PostgreSQL, but `code/backend
 
 ## Architecture
 
-```
+```text
 Clients
   ├── web-frontend (React)               ── HTTP/JSON ──┐
   └── mobile-frontend (React Native)     ── HTTP/JSON ──┤

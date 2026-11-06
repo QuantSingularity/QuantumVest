@@ -128,7 +128,7 @@ kubectl apply -f infrastructure/kubernetes/base/
 helm install quantumvest infrastructure/helm/quantumvest/
 ```
 
-See [Infrastructure Guide](infrastructure_guide.md) for details.
+See [Infrastructure Guide](../infrastructure/README.md) for details.
 
 ---
 
@@ -331,7 +331,7 @@ GRANT ALL PRIVILEGES ON DATABASE quantumvest TO quantumvest;
 \q
 ```
 
-#### macOS
+#### macOS (PostgreSQL via Homebrew)
 
 ```bash
 # Install via Homebrew
@@ -344,7 +344,7 @@ brew services start postgresql@14
 createdb quantumvest
 ```
 
-#### Docker
+#### Docker (PostgreSQL container)
 
 ```bash
 # Run PostgreSQL container
@@ -370,7 +370,7 @@ sudo systemctl start redis-server
 sudo systemctl enable redis-server
 ```
 
-#### macOS
+#### macOS (Redis via Homebrew)
 
 ```bash
 # Install via Homebrew
@@ -380,7 +380,7 @@ brew install redis
 brew services start redis
 ```
 
-#### Docker
+#### Docker (Redis container)
 
 ```bash
 # Run Redis container
@@ -396,7 +396,7 @@ docker run -d \
 
 ### Ethereum/BSC Node Access
 
-**Option 1: Use Public RPC (Free)**
+#### Option 1: Use Public RPC (Free)
 
 ```bash
 # Ethereum Mainnet
@@ -406,7 +406,7 @@ ETHEREUM_NODE_URL=https://eth.public-rpc.com
 BSC_NODE_URL=https://bsc-dataseed.binance.org/
 ```
 
-**Option 2: Infura (Recommended)**
+## Option 2: Infura (Recommended)
 
 1. Sign up at [infura.io](https://infura.io/)
 2. Create a new project
@@ -416,7 +416,7 @@ BSC_NODE_URL=https://bsc-dataseed.binance.org/
 ETHEREUM_NODE_URL=https://mainnet.infura.io/v3/YOUR-PROJECT-ID
 ```
 
-**Option 3: Run Local Node (Advanced)**
+## Option 3: Run Local Node (Advanced)
 
 ```bash
 # Install Geth (Ethereum)
@@ -506,7 +506,7 @@ npm test
 
 ### Common Issues
 
-**1. Python Module Not Found**
+#### 1. Python Module Not Found
 
 ```bash
 # Ensure virtual environment is activated
@@ -516,7 +516,7 @@ source venv/bin/activate
 pip install -r requirements.txt --force-reinstall
 ```
 
-**2. Port Already in Use**
+## 2. Port Already in Use
 
 ```bash
 # Find process using port 5000
@@ -527,7 +527,7 @@ netstat -ano | findstr :5000  # Windows
 kill -9 PID
 ```
 
-**3. Database Connection Failed**
+## 3. Database Connection Failed
 
 ```bash
 # Check PostgreSQL is running
@@ -537,7 +537,7 @@ sudo systemctl status postgresql
 psql -U quantumvest -d quantumvest -h localhost
 ```
 
-**4. npm Install Fails**
+## 4. npm Install Fails
 
 ```bash
 # Clear npm cache
@@ -558,7 +558,7 @@ After successful installation:
 1. **Configure APIs**: Add your API keys for market data providers
 2. **Create Admin User**: Use the admin panel or CLI
 3. **Explore Documentation**: Read the [Usage Guide](USAGE.md)
-4. **Run Examples**: Try examples in [EXAMPLES/](EXAMPLES/)
+4. **Run Examples**: Try examples in [examples/](examples/portfolio-management.md)
 5. **Start Developing**: Read [Developer Guide](CONTRIBUTING.md)
 
 ---

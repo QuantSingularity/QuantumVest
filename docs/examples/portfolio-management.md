@@ -101,7 +101,7 @@ print("\n✅ Portfolio management example completed!")
 
 ## Expected Output
 
-```
+```text
 === Creating Portfolio ===
 Created portfolio: Tech Growth Portfolio (ID: 123e4567-e89b-12d3-a456-426614174000)
 

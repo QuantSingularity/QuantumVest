@@ -11,8 +11,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: "{{ .Values.appName }}-backend"
-  minReplicas: { { .Values.backend.autoscaling.minReplicas | default 2 } }
-  maxReplicas: { { .Values.backend.autoscaling.maxReplicas | default 10 } }
+  minReplicas: {{ .Values.backend.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.backend.autoscaling.maxReplicas | default 10 }}
   metrics:
     - type: Resource
       resource:
@@ -20,22 +20,14 @@ spec:
         target:
           type: Utilization
           averageUtilization:
-            {
-              {
-                .Values.backend.autoscaling.targetCPUUtilizationPercentage | default 70,
-              },
-            }
+            {{ .Values.backend.autoscaling.targetCPUUtilizationPercentage | default 70 }}
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
           averageUtilization:
-            {
-              {
-                .Values.backend.autoscaling.targetMemoryUtilizationPercentage | default 80,
-              },
-            }
+            {{ .Values.backend.autoscaling.targetMemoryUtilizationPercentage | default 80 }}
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300
@@ -67,8 +59,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: "{{ .Values.appName }}-frontend"
-  minReplicas: { { .Values.frontend.autoscaling.minReplicas | default 2 } }
-  maxReplicas: { { .Values.frontend.autoscaling.maxReplicas | default 10 } }
+  minReplicas: {{ .Values.frontend.autoscaling.minReplicas | default 2 }}
+  maxReplicas: {{ .Values.frontend.autoscaling.maxReplicas | default 10 }}
   metrics:
     - type: Resource
       resource:
@@ -76,11 +68,7 @@ spec:
         target:
           type: Utilization
           averageUtilization:
-            {
-              {
-                .Values.frontend.autoscaling.targetCPUUtilizationPercentage | default 70,
-              },
-            }
+            {{ .Values.frontend.autoscaling.targetCPUUtilizationPercentage | default 70 }}
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300

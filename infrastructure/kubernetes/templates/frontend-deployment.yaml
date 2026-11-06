@@ -10,7 +10,7 @@ metadata:
     component: web
     environment: "{{ .Values.environment }}"
 spec:
-  replicas: { { .Values.frontend.replicas } }
+  replicas: {{ .Values.frontend.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -63,7 +63,7 @@ spec:
                 - ALL
           ports:
             - name: http
-              containerPort: { { .Values.frontend.containerPort } }
+              containerPort: {{ .Values.frontend.containerPort }}
               protocol: TCP
           resources:
             limits:

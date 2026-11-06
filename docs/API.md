@@ -12,11 +12,9 @@ Complete REST API documentation for QuantumVest platform with endpoints, paramet
   - [Authentication](#authentication-endpoints)
   - [User Profile](#user-profile-endpoints)
   - [Portfolios](#portfolio-endpoints)
-  - [Transactions](#transaction-endpoints)
   - [Market Data](#market-data-endpoints)
   - [Predictions](#prediction-endpoints)
   - [Watchlists](#watchlist-endpoints)
-  - [Risk Management](#risk-management-endpoints)
   - [System](#system-endpoints)
 
 ---
@@ -25,7 +23,7 @@ Complete REST API documentation for QuantumVest platform with endpoints, paramet
 
 ### Base URL
 
-```
+```text
 Production: https://api.quantumvest.com/v1
 Development: http://localhost:5000/api/v1
 ```
@@ -34,7 +32,7 @@ Development: http://localhost:5000/api/v1
 
 All requests and responses use JSON:
 
-```
+```text
 Content-Type: application/json
 ```
 
@@ -132,14 +130,14 @@ Create a new user account.
 
 **Request Body**:
 
-| Name       | Type   | Required | Description                   | Example            |
-| ---------- | ------ | -------- | ----------------------------- | ------------------ |
-| username   | string | Yes      | Unique username (3-80 chars)  | "johndoe"          |
-| email      | string | Yes      | Valid email address           | "john@example.com" |
-| password   | string | Yes      | Strong password (min 8 chars) | "SecurePass123!"   |
-| first_name | string | Yes      | User's first name             | "John"             |
-| last_name  | string | Yes      | User's last name              | "Doe"              |
-| phone      | string | No       | Phone number                  | "+1234567890"      |
+| Name       | Type   | Required | Description                   | Example              |
+| ---------- | ------ | -------- | ----------------------------- | -------------------- |
+| username   | string | Yes      | Unique username (3-80 chars)  | "johndoe"            |
+| email      | string | Yes      | Valid email address           | "<john@example.com>" |
+| password   | string | Yes      | Strong password (min 8 chars) | "SecurePass123!"     |
+| first_name | string | Yes      | User's first name             | "John"               |
+| last_name  | string | Yes      | User's last name              | "Doe"                |
+| phone      | string | No       | Phone number                  | "+1234567890"        |
 
 **Example Request**:
 
@@ -187,11 +185,11 @@ Authenticate user and obtain tokens.
 
 **Request Body**:
 
-| Name     | Type   | Required | Description                     | Example            |
-| -------- | ------ | -------- | ------------------------------- | ------------------ |
-| username | string | Yes\*    | Username or email               | "johndoe"          |
-| email    | string | Yes\*    | Email (alternative to username) | "john@example.com" |
-| password | string | Yes      | User password                   | "SecurePass123!"   |
+| Name     | Type   | Required | Description                     | Example              |
+| -------- | ------ | -------- | ------------------------------- | -------------------- |
+| username | string | Yes\*    | Username or email               | "johndoe"            |
+| email    | string | Yes\*    | Email (alternative to username) | "<john@example.com>" |
+| password | string | Yes      | User password                   | "SecurePass123!"     |
 
 \*Provide either username or email
 
@@ -738,7 +736,7 @@ Check API health status.
 
 **Endpoint**: `GET /health`
 
-**No Authentication Required**
+**No Authentication Required.**
 
 **Example Request**:
 
@@ -888,7 +886,7 @@ curl -X GET "http://localhost:5000/api/v1/portfolios/transactions?limit=50&curso
 
 **Response**:
 
-```json
+```jsonc
 {
     "success": true,
     "data": [...],
@@ -906,4 +904,4 @@ For more information, see:
 
 - [Usage Guide](USAGE.md) for practical examples
 - [CLI Reference](CLI.md) for command-line tools
-- [Examples](EXAMPLES/) for working code samples
+- [Examples](examples/portfolio-management.md) for working code samples

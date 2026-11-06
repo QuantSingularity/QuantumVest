@@ -19,7 +19,7 @@ Common issues and solutions for QuantumVest.
 
 **Symptom:**
 
-```
+```text
 ModuleNotFoundError: No module named 'flask'
 ```
 
@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 **Symptom:**
 
-```
+```text
 OSError: [Errno 48] Address already in use
 ```
 
@@ -69,7 +69,7 @@ FLASK_PORT=8000 python app.py
 
 **Symptom:**
 
-```
+```text
 sqlalchemy.exc.OperationalError: could not connect to server
 ```
 
@@ -121,7 +121,7 @@ new_access_token = response.json()['access_token']
 
 **Symptom:**
 
-```
+```text
 ImportError: attempted relative import with no known parent package
 ```
 
@@ -146,7 +146,7 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
 
 **Symptom:**
 
-```
+```bash
 npm ERR! code ERESOLVE
 npm ERR! ERESOLVE unable to resolve dependency tree
 ```
@@ -171,7 +171,7 @@ npm install
 
 **Symptom:**
 
-```
+```text
 Access to XMLHttpRequest blocked by CORS policy
 ```
 
@@ -197,7 +197,7 @@ CORS_ORIGINS=*
 
 **Symptom:**
 
-```
+```text
 alembic.util.exc.CommandError: Target database is not up to date
 ```
 
@@ -223,22 +223,25 @@ flask db upgrade
 
 **Symptom:**
 
-```
+```text
 psycopg2.OperationalError: database is locked
 ```
 
 **Solution:**
 
-```bash
-# Check for hanging connections
+```sql
+-- Check for hanging connections
 SELECT * FROM pg_stat_activity WHERE datname='quantumvest';
 
-# Kill hanging connections
+-- Kill hanging connections
 SELECT pg_terminate_backend(pid)
 FROM pg_stat_activity
 WHERE datname='quantumvest' AND pid <> pg_backend_pid();
+```
 
-# Restart PostgreSQL
+Then restart PostgreSQL if the problem persists:
+
+```bash
 sudo systemctl restart postgresql
 ```
 
@@ -283,7 +286,7 @@ def api_call_with_retry(url, max_retries=3):
 
 **Symptom:**
 
-```
+```text
 Unable to fetch data from Alpha Vantage API
 ```
 
@@ -317,21 +320,21 @@ redis-cli ping
 redis-cli INFO stats
 ```
 
-2. **Enable query logging:**
+1. **Enable query logging:**
 
 ```python
 # In config.py
 SQLALCHEMY_ECHO = True
 ```
 
-3. **Add database indexes:**
+1. **Add database indexes:**
 
 ```sql
 CREATE INDEX idx_portfolios_user_id ON portfolios(user_id);
 CREATE INDEX idx_assets_symbol ON assets(symbol);
 ```
 
-4. **Optimize queries:**
+1. **Optimize queries:**
 
 ```python
 # Use eager loading
@@ -346,7 +349,7 @@ query = Portfolio.query.options(
 
 **Symptom:**
 
-```
+```text
 MemoryError: Unable to allocate array
 ```
 
@@ -361,14 +364,14 @@ for chunk in pd.read_csv('data.csv', chunksize=chunk_size):
     process(chunk)
 ```
 
-2. **Increase worker memory:**
+1. **Increase worker memory:**
 
 ```bash
 # Gunicorn
 gunicorn --workers 2 --worker-class gevent --timeout 120 app:app
 ```
 
-3. **Use connection pooling:**
+1. **Use connection pooling:**
 
 ```python
 # In config.py

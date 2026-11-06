@@ -17,7 +17,7 @@ High-level system design, module structure, data flow, and component diagrams fo
 
 QuantumVest follows a **modular microservices-inspired architecture** with clear separation of concerns:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Client Layer                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
@@ -164,7 +164,7 @@ graph TB
 
 ### 1. User Authentication Flow
 
-```
+```text
 User → [POST /auth/login] → API Gateway
   → Auth Service → Validate Credentials (PostgreSQL)
   → Generate JWT Tokens → Cache Session (Redis)
@@ -173,7 +173,7 @@ User → [POST /auth/login] → API Gateway
 
 ### 2. Price Prediction Flow
 
-```
+```text
 User → [GET /predictions/stocks/AAPL] → API Gateway
   → Check Cache (Redis) → [MISS]
   → Prediction Service → Fetch Historical Data (Stock API)
@@ -183,7 +183,7 @@ User → [GET /predictions/stocks/AAPL] → API Gateway
 
 ### 3. Portfolio Update Flow
 
-```
+```text
 User → [POST /portfolios/{id}/transactions] → API Gateway
   → Authenticate (JWT) → Portfolio Service
   → Validate Transaction → Update Portfolio (PostgreSQL)
@@ -193,7 +193,7 @@ User → [POST /portfolios/{id}/transactions] → API Gateway
 
 ### 4. Real-Time Data Flow
 
-```
+```text
 External API → Data Fetcher (Celery Task)
   → Parse & Transform → Data Storage → InfluxDB
   → Trigger WebSocket Event → WebSocket Service
@@ -219,7 +219,7 @@ External API → Data Fetcher (Celery Task)
 
 ### Backend File Organization
 
-```
+```text
 code/backend/
 ├── app.py                      # Flask application factory
 ├── api_routes.py               # REST API endpoints
@@ -292,7 +292,7 @@ code/backend/
 
 ### Production Deployment (Kubernetes)
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                        Load Balancer                         │
 │                  (Ingress Controller)                        │
@@ -384,7 +384,7 @@ code/backend/
 
 ### Monitoring Stack
 
-```
+```text
 Application → Prometheus (Metrics) → Grafana (Dashboards)
            → ELK Stack (Logs)
            → Sentry (Errors)
@@ -406,5 +406,5 @@ Application → Prometheus (Metrics) → Grafana (Dashboards)
 For implementation details, see:
 
 - [Developer Guide](CONTRIBUTING.md)
-- [Infrastructure Guide](infrastructure_guide.md)
+- [Infrastructure Guide](../infrastructure/README.md)
 - [API Documentation](API.md)

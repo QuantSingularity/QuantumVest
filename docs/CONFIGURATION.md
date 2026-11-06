@@ -69,7 +69,7 @@ DB_MAX_OVERFLOW=20
 
 **Connection String Format**:
 
-```
+```text
 postgresql://[user]:[password]@[host]:[port]/[database]
 ```
 
@@ -117,9 +117,9 @@ COINGECKO_API_KEY=YOUR_COINGECKO_KEY
 
 **Where to get API keys**:
 
-- Alpha Vantage: https://www.alphavantage.co/support/#api-key
-- Finnhub: https://finnhub.io/register
-- CoinGecko: https://www.coingecko.com/en/api
+- Alpha Vantage: <https://www.alphavantage.co/support/#api-key>
+- Finnhub: <https://finnhub.io/register>
+- CoinGecko: <https://www.coingecko.com/en/api>
 
 ---
 
@@ -566,7 +566,7 @@ print(f'Debug: {config.DEBUG}')
 
 ### Common Configuration Issues
 
-**1. Missing Environment Variables**
+#### 1. Missing Environment Variables
 
 ```bash
 # Check if variable is set
@@ -576,7 +576,7 @@ echo $DATABASE_URL
 export DATABASE_URL=postgresql://user:pass@localhost/db
 ```
 
-**2. Database Connection Failed**
+## 2. Database Connection Failed
 
 ```bash
 # Test connection
@@ -586,7 +586,7 @@ psql -U quantumvest -d quantumvest -h localhost
 cat .env | grep DATABASE_URL
 ```
 
-**3. Redis Connection Failed**
+## 3. Redis Connection Failed
 
 ```bash
 # Test Redis
@@ -596,7 +596,7 @@ redis-cli ping
 echo $REDIS_URL
 ```
 
-**4. API Keys Not Working**
+## 4. API Keys Not Working
 
 ```bash
 # Verify API key is set

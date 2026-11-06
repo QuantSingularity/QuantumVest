@@ -27,7 +27,7 @@ metadata:
 data:
   agent.hcl: |
     vault {
-      address = "{{ .Values.vault.address | default \"https://vault.quantumvest.com\" }}"
+      address = "{{ .Values.vault.address | default "https://vault.quantumvest.com" }}"
     }
     auto_auth {
       method "kubernetes" {
@@ -39,5 +39,5 @@ data:
     }
     template {
       destination = "/vault/secrets/config"
-      contents = "{{ `{{ with secret \"secret/{{ .Values.appName }}/backend\" }}{{ .Data.data | toJSON }}{{ end }}` }}"
+      contents = "{{ "{{" }} with secret \"secret/{{ .Values.appName }}/backend\" {{ "}}" }}{{ "{{" }} .Data.data | toJSON {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
     }

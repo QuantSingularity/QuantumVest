@@ -10,7 +10,7 @@ metadata:
     environment: "{{ .Values.environment }}"
 spec:
   serviceName: "{{ .Values.appName }}-database"
-  replicas: { { .Values.database.replicas } }
+  replicas: {{ .Values.database.replicas }}
   updateStrategy:
     type: RollingUpdate
   selector:
@@ -48,7 +48,7 @@ spec:
                 - NET_BIND_SERVICE
           ports:
             - name: mysql
-              containerPort: { { .Values.database.containerPort } }
+              containerPort: {{ .Values.database.containerPort }}
               protocol: TCP
           resources:
             limits:

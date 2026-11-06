@@ -647,6 +647,71 @@ System maintenance operations.
 
 ---
 
+#### dev_workflow.sh
+
+Development workflow automation: linting, tests, code quality checks and documentation generation across the backend, AI models, web-frontend, mobile-frontend and blockchain code.
+
+**Usage**:
+
+```bash
+./scripts/dev_workflow.sh [OPTIONS]
+```
+
+**Options**:
+
+| Option            | Description                  |
+| ----------------- | ---------------------------- |
+| `-h`, `--help`    | Show help message            |
+| `-l`, `--lint`    | Run linting only             |
+| `-t`, `--test`    | Run tests only               |
+| `-q`, `--quality` | Run code quality checks only |
+| `-d`, `--docs`    | Generate documentation only  |
+| `-a`, `--all`     | Run all checks (default)     |
+
+**Examples**:
+
+```bash
+# Run every check
+./scripts/dev_workflow.sh
+
+# Lint only
+./scripts/dev_workflow.sh --lint
+```
+
+---
+
+#### cicd.sh
+
+Sets up CI/CD enhancements for the repository: GitHub Actions workflows, release management and version control hooks. Run it from the repository root.
+
+**Usage**:
+
+```bash
+./scripts/cicd.sh [OPTIONS]
+```
+
+**Options**:
+
+| Option                    | Description                             |
+| ------------------------- | --------------------------------------- |
+| `-h`, `--help`            | Show help message                       |
+| `-g`, `--github-actions`  | Set up GitHub Actions workflows only    |
+| `-r`, `--release`         | Set up release management only          |
+| `-v`, `--version-control` | Set up version control hooks only       |
+| `-a`, `--all`             | Set up all CI/CD enhancements (default) |
+
+**Examples**:
+
+```bash
+# Set up everything
+./scripts/cicd.sh
+
+# Only the version control hooks
+./scripts/cicd.sh --version-control
+```
+
+---
+
 ## Command Cheat Sheet
 
 ### Quick Reference
@@ -686,13 +751,13 @@ cd code/ai_models && python train_prediction_model.py --symbol AAPL
 
 ### Common Issues
 
-**1. Permission Denied**
+#### 1. Permission Denied
 
 ```bash
 chmod +x scripts/*.sh
 ```
 
-**2. Virtual Environment Not Found**
+#### 2. Virtual Environment Not Found
 
 ```bash
 cd code/backend
@@ -700,7 +765,7 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-**3. Module Not Found**
+#### 3. Module Not Found
 
 ```bash
 cd code/backend
@@ -708,7 +773,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**4. Database Connection Failed**
+#### 4. Database Connection Failed
 
 ```bash
 # Check PostgreSQL is running
@@ -729,4 +794,4 @@ cat .env | grep DATABASE_URL
 
 ---
 
-_For script internals and customization, refer to inline script documentation_
+_For script internals and customization, refer to inline script documentation._

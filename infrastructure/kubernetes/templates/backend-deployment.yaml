@@ -14,7 +14,7 @@ metadata:
     quantumvest.com/compliance-level: "financial"
     quantumvest.com/data-classification: "sensitive"
 spec:
-  replicas: { { .Values.backend.replicas } }
+  replicas: {{ .Values.backend.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -87,7 +87,7 @@ spec:
                 - ALL
           ports:
             - name: http
-              containerPort: { { .Values.backend.containerPort } }
+              containerPort: {{ .Values.backend.containerPort }}
               protocol: TCP
           resources:
             limits:
@@ -155,23 +155,13 @@ spec:
               port: http
               scheme: HTTP
             initialDelaySeconds:
-              {
-                {
-                  .Values.backend.probes.liveness.initialDelaySeconds | default 60,
-                },
-              }
+              {{ .Values.backend.probes.liveness.initialDelaySeconds | default 60 }}
             periodSeconds:
-              { { .Values.backend.probes.liveness.periodSeconds | default 30 } }
+              {{ .Values.backend.probes.liveness.periodSeconds | default 30 }}
             timeoutSeconds:
-              {
-                { .Values.backend.probes.liveness.timeoutSeconds | default 10 },
-              }
+              {{ .Values.backend.probes.liveness.timeoutSeconds | default 10 }}
             failureThreshold:
-              {
-                {
-                  .Values.backend.probes.liveness.failureThreshold | default 3,
-                },
-              }
+              {{ .Values.backend.probes.liveness.failureThreshold | default 3 }}
             successThreshold: 1
           readinessProbe:
             httpGet:
@@ -179,25 +169,13 @@ spec:
               port: http
               scheme: HTTP
             initialDelaySeconds:
-              {
-                {
-                  .Values.backend.probes.readiness.initialDelaySeconds | default 30,
-                },
-              }
+              {{ .Values.backend.probes.readiness.initialDelaySeconds | default 30 }}
             periodSeconds:
-              {
-                { .Values.backend.probes.readiness.periodSeconds | default 10 },
-              }
+              {{ .Values.backend.probes.readiness.periodSeconds | default 10 }}
             timeoutSeconds:
-              {
-                { .Values.backend.probes.readiness.timeoutSeconds | default 5 },
-              }
+              {{ .Values.backend.probes.readiness.timeoutSeconds | default 5 }}
             failureThreshold:
-              {
-                {
-                  .Values.backend.probes.readiness.failureThreshold | default 3,
-                },
-              }
+              {{ .Values.backend.probes.readiness.failureThreshold | default 3 }}
             successThreshold: 1
           startupProbe:
             httpGet:
@@ -205,21 +183,13 @@ spec:
               port: http
               scheme: HTTP
             initialDelaySeconds:
-              {
-                {
-                  .Values.backend.probes.startup.initialDelaySeconds | default 10,
-                },
-              }
+              {{ .Values.backend.probes.startup.initialDelaySeconds | default 10 }}
             periodSeconds:
-              { { .Values.backend.probes.startup.periodSeconds | default 10 } }
+              {{ .Values.backend.probes.startup.periodSeconds | default 10 }}
             timeoutSeconds:
-              { { .Values.backend.probes.startup.timeoutSeconds | default 5 } }
+              {{ .Values.backend.probes.startup.timeoutSeconds | default 5 }}
             failureThreshold:
-              {
-                {
-                  .Values.backend.probes.startup.failureThreshold | default 30,
-                },
-              }
+              {{ .Values.backend.probes.startup.failureThreshold | default 30 }}
             successThreshold: 1
           lifecycle:
             preStop:
@@ -279,7 +249,7 @@ spec:
       imagePullSecrets:
         - name: "{{ .Values.imagePullSecrets }}"
       terminationGracePeriodSeconds:
-        { { .Values.backend.terminationGracePeriodSeconds | default 30 } }
+        {{ .Values.backend.terminationGracePeriodSeconds | default 30 }}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler

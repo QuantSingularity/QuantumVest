@@ -1,0 +1,5 @@
+# Helm templates contain Go template actions ({{ ... }}) that are not valid
+# YAML. Prettier rewrites them (for example "{{ x }}" becomes "{ { x } }"),
+# which breaks "helm template". The Infrastructure Validation job renders and
+# validates these files instead.
+infrastructure/kubernetes/templates/
